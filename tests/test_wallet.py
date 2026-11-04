@@ -1,158 +1,252 @@
 """Tests de la spec screen-time-wallet. Chaque test déclare l'exigence qu'il vérifie."""
 
-from datetime import date, datetime
-from fractions import Fraction
+from datetime import datetime
 
 import pytest
 
 from portefeuille_minutes.config import Config
-from portefeuille_minutes.grades import Grade, InvalidGradeError
-from portefeuille_minutes.wallet import Wallet
+from portefeuille_minutes.grades import Grade
+from portefeuille_minutes.wallet import InvalidConsumptionError, Wallet
+from real_notes import RAW, make
 
-LUNDI = datetime(2026, 11, 2)  # lundi 2 novembre 2026, 00h00
+SEVEN = {
+    "ANGLAIS LV1": "13.85", "ARTS PLASTIQUES": "17", "EDUCATION MUSICALE": "16",
+    "ENS.INTEG.SC.&TECHNO": "18", "FRANCAIS": "10.67", "HISTOIRE-GEOGRAPHIE": "17.43",
+    "MATHEMATIQUES": "19.34", "ED PHYSIQUE & SPORT": "",
+}
+SIXTEEN = {m: "16.2" for m in Config().subject_multipliers}  # moyenne générale exactement 16,2
+TWO = {"MATHEMATIQUES": 15, "FRANCAIS": 14}
+
+MONDAY = datetime(2026, 11, 2)
+WEDNESDAY = datetime(2026, 11, 4, 15, 30)
+NEXT_MONDAY = datetime(2026, 11, 9)
 
 
-def grade(id="n-1", subject="maths", value=15, scale=20, coefficient=1):
-    return Grade(id, subject, date(2026, 11, 4), value, scale, coefficient)
+def grade(subject="MATHEMATIQUES", value=15, scale=20, coefficient=1, comment="contrôle", date="2026-11-04"):
+    return Grade(date, subject, comment, value, scale, coefficient)
 
 
-def wallet_with(balance):
-    w = Wallet.create(LUNDI)
-    w.balance = balance
+AP_FR = [grade("ARTS PLASTIQUES", 9, 10, "0,5", comment="Lotoportrait"), grade("FRANCAIS", 7, comment="Sommative")]
+
+
+def fresh(averages=SEVEN, notes=()):
+    return Wallet.create(MONDAY, averages, notes)
+
+
+# --- Deux compartiments ----------------------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Deux compartiments")
+def test_capital_negatif_reduit_le_temps_disponible():
+    w = fresh()
+    w.notes_capital = -100
+    assert (w.weekly_credit, w.available) == (228, 128)
+
+
+@pytest.mark.requirement("screen-time-wallet/Deux compartiments")
+def test_les_compartiments_sont_des_entiers():
+    w = fresh()
+    w.settle(NEXT_MONDAY, SEVEN, AP_FR)
+    assert isinstance(w.weekly_credit, int) and isinstance(w.notes_capital, int)
+
+
+# --- Initialisation du portefeuille -------------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Initialisation du portefeuille")
+def test_creation_en_milieu_de_semaine():
+    w = Wallet.create(WEDNESDAY, SEVEN)
+    assert (w.weekly_credit, w.notes_capital, w.available) == (228, 0, 228)
+
+
+@pytest.mark.requirement("screen-time-wallet/Initialisation du portefeuille")
+def test_historique_visible_a_la_creation_sans_effet():
+    visible = [make(r) for r in RAW[:15]]
+    w = Wallet.create(MONDAY, SEVEN, visible)
+    assert w.notes_capital == 0
+    reports = w.settle(NEXT_MONDAY, SEVEN, visible)
+    assert reports[0].counted == []  # ces notes ne sont comptées dans aucun bilan
+
+
+@pytest.mark.requirement("screen-time-wallet/Initialisation du portefeuille")
+def test_creation_avec_moins_de_quatre_matieres():
+    assert Wallet.create(MONDAY, TWO).weekly_credit == 240
+
+
+# --- Bilan du lundi ---------------------------------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Bilan du lundi")
+def test_credit_hebdomadaire_non_cumulable():
+    w = fresh()
+    w.settle(NEXT_MONDAY, SEVEN, [])
+    assert w.weekly_credit == 228
+
+
+@pytest.mark.requirement("screen-time-wallet/Bilan du lundi")
+def test_capital_cumule():
+    w = fresh(SIXTEEN)
+    w.notes_capital = 111
+    w.settle(NEXT_MONDAY, SIXTEEN, [grade("ENS.INTEG.SC.&TECHNO", 9, 10, "0,5", comment="devoir")])
+    assert w.notes_capital == 570
+
+
+@pytest.mark.requirement("screen-time-wallet/Bilan du lundi")
+def test_capital_qui_diminue():
+    w = fresh()
+    w.notes_capital = 1346
+    w.settle(NEXT_MONDAY, SEVEN, AP_FR)
+    assert w.notes_capital == 972
+
+
+@pytest.mark.requirement("screen-time-wallet/Bilan du lundi")
+def test_avant_le_lundi_aucun_bilan():
+    w = fresh()
+    assert w.settle(datetime(2026, 11, 8, 23, 59), SEVEN, AP_FR) == []
+    assert w.notes_capital == 0
+
+
+@pytest.mark.requirement("screen-time-wallet/Bilan du lundi")
+def test_bilan_repete_ne_change_rien():
+    w = fresh()
+    assert len(w.settle(NEXT_MONDAY, SEVEN, AP_FR)) == 1
+    snapshot = (w.weekly_credit, w.notes_capital)
+    assert w.settle(NEXT_MONDAY, SEVEN, AP_FR) == []
+    assert (w.weekly_credit, w.notes_capital) == snapshot
+
+
+# --- Lundis manqués ----------------------------------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Lundis manqués")
+def test_trois_lundis_manques():
+    w = fresh()
+    reports = w.settle(datetime(2026, 11, 23, 8, 0), SEVEN, AP_FR)
+    assert [r.week_credit for r in reports] == [-374, 342, 342]
+    assert w.notes_capital == -374 + 2 * 342
+    assert w.weekly_credit == 228  # celui d'une seule semaine
+
+
+# --- Notes de la semaine -------------------------------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Notes de la semaine")
+def test_note_fournie_a_deux_releves_successifs():
+    w = fresh()
+    note = [grade("FRANCAIS", 7)]
+    first = w.settle(NEXT_MONDAY, SEVEN, note)
+    second = w.settle(datetime(2026, 11, 16), SEVEN, note)
+    assert len(first[0].counted) == 1 and second[0].counted == []
+
+
+@pytest.mark.requirement("screen-time-wallet/Notes de la semaine")
+def test_valeur_corrigee_premiere_valeur_conservee():
+    w = fresh()
+    w.settle(NEXT_MONDAY, SEVEN, [grade("MATHEMATIQUES", 15, comment="n-42")])
+    capital = w.notes_capital
+    reports = w.settle(datetime(2026, 11, 16), SEVEN, [grade("MATHEMATIQUES", 8, comment="n-42")])
+    assert reports[0].counted == []
+    assert w.notes_capital == capital + reports[0].week_credit  # semaine sans note : crédit neutre
+
+
+@pytest.mark.requirement("screen-time-wallet/Notes de la semaine")
+def test_deux_notes_proches_distinguees_par_le_commentaire():
+    w = fresh()
+    attitude = grade("EDUCATION MUSICALE", 7, 10, 1, "Attitude", "2026-10-15")
+    participation = grade("EDUCATION MUSICALE", 7, 10, 1, "Participation", "2026-10-15")
+    reports = w.settle(NEXT_MONDAY, SEVEN, [attitude, participation])
+    assert len(reports[0].counted) == 2
+
+
+@pytest.mark.requirement("screen-time-wallet/Notes de la semaine")
+def test_note_publiee_en_retard_comptee_au_bilan_suivant():
+    w = fresh()
+    late = grade("FRANCAIS", 7, date="2026-11-01")  # saisie la semaine précédente
+    w.settle(NEXT_MONDAY, SEVEN, [])
+    reports = w.settle(datetime(2026, 11, 16), SEVEN, [late])
+    assert reports[0].counted == [late]
+
+
+# --- Notes écartées ou signalées --------------------------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Notes écartées ou signalées")
+def test_eleve_absent_sans_effet_ni_erreur():
+    w = fresh()
+    reports = w.settle(NEXT_MONDAY, SEVEN, [grade(value="Abs")])
+    assert reports[0].counted == [] and reports[0].rejected == []
+
+
+@pytest.mark.requirement("screen-time-wallet/Notes écartées ou signalées")
+def test_valeur_fournie_apres_coup_comptee_au_bilan_suivant():
+    w = fresh()
+    w.settle(NEXT_MONDAY, SEVEN, [grade(value="Abs", comment="n-7")])
+    reports = w.settle(datetime(2026, 11, 16), SEVEN, [grade(value=15, comment="n-7")])
+    assert len(reports[0].counted) == 1
+
+
+@pytest.mark.requirement("screen-time-wallet/Notes écartées ou signalées")
+def test_note_invalide_ne_bloque_pas_le_bilan():
+    w = fresh()
+    bad, good = grade(value=22, comment="invalide"), grade("FRANCAIS", 7)
+    reports = w.settle(NEXT_MONDAY, SEVEN, [bad, good])
+    assert reports[0].counted == [good]
+    assert [g for g, _ in reports[0].rejected] == [bad]
+    assert bad.key not in w.seen_keys
+
+
+@pytest.mark.requirement("screen-time-wallet/Notes écartées ou signalées")
+def test_matiere_inconnue_sans_effet_marquee_vue_et_signalee():
+    w = fresh()
+    unknown = grade("TECHNOLOGIE", 5)
+    reports = w.settle(NEXT_MONDAY, SEVEN, [unknown])
+    assert reports[0].counted == [] and reports[0].unknown_subjects == ["TECHNOLOGIE"]
+    assert reports[0].week_credit == 342  # comme une semaine sans note
+    assert unknown.key in w.seen_keys
+
+
+# --- Compte rendu du bilan --------------------------------------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Compte rendu du bilan")
+def test_compte_rendu_complet():
+    w = fresh()
+    bad = grade(value=22, comment="invalide")
+    unknown = grade("TECHNOLOGIE", 5)
+    report = w.settle(NEXT_MONDAY, SEVEN, AP_FR + [bad, unknown])[0]
+    assert report.counted == AP_FR
+    assert [g for g, _ in report.rejected] == [bad]
+    assert report.unknown_subjects == ["TECHNOLOGIE"]
+    assert (report.initial_credit, report.week_credit) == (228, -374)
+    assert report.monday == NEXT_MONDAY
+
+
+# --- Consommation -------------------------------------------------------------------------------------------
+
+def with_capital(capital):
+    w = fresh()
+    w.notes_capital = capital
     return w
 
 
-# --- Solde en minutes entières ------------------------------------------------
-
-@pytest.mark.requirement("screen-time-wallet/Solde en minutes entières")
-def test_solde_negatif_autorise():
-    # Config réglée pour obtenir exactement -50 min : 10 min/point × 1 × (7 − 12)
-    config = Config(base_rate=Fraction(10), subject_multipliers={"maths": Fraction(1)})
-    w = Wallet(balance=10, last_allocation=LUNDI, config=config)
-    w.apply_grade(grade(value=7))
-    assert w.balance == -40
-    assert isinstance(w.balance, int)
+@pytest.mark.requirement("screen-time-wallet/Consommation")
+def test_consommation_couverte_par_le_credit_hebdomadaire():
+    w = with_capital(100)
+    w.consume(100)
+    assert (w.weekly_credit, w.notes_capital) == (128, 100)
 
 
-# --- Allocation à la création -------------------------------------------------
-
-@pytest.mark.requirement("screen-time-wallet/Allocation à la création")
-def test_creation_en_milieu_de_semaine():
-    assert Wallet.create(datetime(2026, 11, 4, 15, 30)).balance == 240  # mercredi
-
-
-# --- Allocation hebdomadaire --------------------------------------------------
-
-@pytest.mark.requirement("screen-time-wallet/Allocation hebdomadaire")
-def test_passage_au_lundi():
-    w = Wallet.create(LUNDI)
-    assert w.update(datetime(2026, 11, 9, 0, 0)) == 240
-    assert w.balance == 480
+@pytest.mark.requirement("screen-time-wallet/Consommation")
+def test_consommation_qui_entame_le_capital():
+    w = with_capital(100)
+    w.consume(300)
+    assert (w.weekly_credit, w.notes_capital) == (0, 28)
 
 
-@pytest.mark.requirement("screen-time-wallet/Allocation hebdomadaire")
-def test_avant_le_lundi():
-    w = Wallet.create(LUNDI)
-    assert w.update(datetime(2026, 11, 8, 23, 59)) == 0
-    assert w.balance == 240
+@pytest.mark.requirement("screen-time-wallet/Consommation")
+def test_capital_qui_devient_negatif():
+    w = with_capital(0)
+    w.consume(300)
+    assert (w.weekly_credit, w.notes_capital) == (0, -72)
 
 
-@pytest.mark.requirement("screen-time-wallet/Allocation hebdomadaire")
-def test_plusieurs_semaines_manquees():
-    w = Wallet.create(LUNDI)
-    assert w.update(datetime(2026, 11, 23, 8, 0)) == 3 * 240
-    assert w.balance == 4 * 240
-
-
-@pytest.mark.requirement("screen-time-wallet/Allocation hebdomadaire")
-def test_mise_a_jour_repetee():
-    w = Wallet.create(LUNDI)
-    w.update(datetime(2026, 11, 9, 10, 0))
-    assert w.update(datetime(2026, 11, 9, 10, 0)) == 0
-    assert w.balance == 480
-
-
-# --- Report du solde ----------------------------------------------------------
-
-@pytest.mark.requirement("screen-time-wallet/Report du solde")
-def test_report_positif():
-    w = wallet_with(100)
-    w.update(datetime(2026, 11, 9))
-    assert w.balance == 340
-
-
-@pytest.mark.requirement("screen-time-wallet/Report du solde")
-def test_report_negatif():
-    w = wallet_with(-100)
-    w.update(datetime(2026, 11, 9))
-    assert w.balance == 140
-
-
-# --- Application d'une note au solde -------------------------------------------
-
-@pytest.mark.requirement("screen-time-wallet/Application d'une note au solde")
-def test_note_creditante():
-    w = wallet_with(240)
-    w.apply_grade(grade(value=15))
-    assert w.balance == 375
-
-
-@pytest.mark.requirement("screen-time-wallet/Application d'une note au solde")
-def test_note_debitante():
-    w = wallet_with(240)
-    w.apply_grade(grade(subject="français", value=8))
-    assert w.balance == 0
-
-
-@pytest.mark.requirement("screen-time-wallet/Application d'une note au solde")
-def test_note_sans_effet():
-    w = wallet_with(240)
-    w.apply_grade(grade(subject="technologie", value=5))
-    assert w.balance == 240
-
-
-# --- Pas de double traitement d'une note ---------------------------------------
-
-@pytest.mark.requirement("screen-time-wallet/Pas de double traitement d'une note")
-def test_note_recue_deux_fois():
-    w = wallet_with(240)
-    w.apply_grade(grade("n-42", value=15))
-    w.apply_grade(grade("n-42", value=15))
-    assert w.balance == 375
-
-
-@pytest.mark.requirement("screen-time-wallet/Pas de double traitement d'une note")
-def test_meme_identifiant_valeur_differente():
-    w = wallet_with(240)
-    w.apply_grade(grade("n-42", value=15))
-    w.apply_grade(grade("n-42", subject="maths", value=8))
-    assert w.balance == 375
-
-
-# --- Note non numérique ignorée --------------------------------------------------
-
-@pytest.mark.requirement("screen-time-wallet/Note non numérique ignorée")
-@pytest.mark.parametrize("value", ["Abs", "Disp", "NE", "", None])
-def test_eleve_absent(value):
-    w = wallet_with(240)
-    assert w.apply_grade(grade(value=value)) == 0
-    assert w.balance == 240
-
-
-@pytest.mark.requirement("screen-time-wallet/Note non numérique ignorée")
-def test_valeur_fournie_apres_coup():
-    w = wallet_with(240)
-    w.apply_grade(grade("n-7", value="Abs"))
-    w.apply_grade(grade("n-7", value=15))
-    assert w.balance == 240 + 135
-
-
-# --- Rejet atomique d'une note invalide -----------------------------------------
-
-@pytest.mark.requirement("screen-time-wallet/Rejet atomique d'une note invalide")
-def test_note_invalide_ne_change_rien():
-    w = wallet_with(240)
-    with pytest.raises(InvalidGradeError):
-        w.apply_grade(grade("n-9", value=22))
-    assert w.balance == 240
-    assert "n-9" not in w.processed_ids
+@pytest.mark.requirement("screen-time-wallet/Consommation")
+@pytest.mark.parametrize("minutes", [0, -5])
+def test_consommation_invalide(minutes):
+    w = with_capital(100)
+    with pytest.raises(InvalidConsumptionError):
+        w.consume(minutes)
+    assert (w.weekly_credit, w.notes_capital) == (228, 100)

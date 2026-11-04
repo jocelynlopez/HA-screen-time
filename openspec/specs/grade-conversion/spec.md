@@ -2,90 +2,81 @@
 
 ## Purpose
 
-Définit comment une note scolaire est convertie en un nombre de minutes de temps d'écran à créditer (note au-dessus du pivot) ou à débiter (note en dessous), selon la matière, le coefficient et le barème.
+Définit comment une note scolaire est préparée avant tout calcul de crédit : normalisation sur 20, poids selon la matière et le coefficient, reconnaissance des notes non numériques et rejet des notes invalides.
 
 ## Requirements
 
-### Requirement: Formule de conversion
-Le système SHALL calculer les minutes d'une note par `taux de base × multiplicateur de la matière × (note sur 20 − note pivot) × coefficient`. Un résultat positif est un crédit, un résultat négatif est un débit.
-
-#### Scenario: Note au-dessus du pivot
-- **WHEN** une note de 15/20 en maths (multiplicateur 3) de coefficient 1 est convertie, avec un taux de base de 15 min/point et un pivot de 12
-- **THEN** le résultat est +135 minutes
-
-#### Scenario: Note en dessous du pivot
-- **WHEN** une note de 8/20 en français (multiplicateur 4) de coefficient 1 est convertie, avec les mêmes paramètres
-- **THEN** le résultat est −240 minutes
-
-#### Scenario: Note égale au pivot
-- **WHEN** une note de 12/20 est convertie
-- **THEN** le résultat est 0 minute
-
-### Requirement: Note pivot
-Le système SHALL comparer la note, ramenée sur 20, à une note pivot de 12/20 par défaut. Le pivot SHALL être un paramètre de configuration.
-
-#### Scenario: Pivot modifié
-- **WHEN** le pivot est configuré à 10 et une note de 15/20 en maths de coefficient 1 est convertie
-- **THEN** le résultat est +225 minutes
-
 ### Requirement: Normalisation du barème
-Le système SHALL ramener toute note sur 20 avant la conversion, par `valeur × 20 / barème`.
+Le système SHALL ramener toute note sur 20 avant son utilisation dans un calcul, par `valeur × 20 / barème`. La valeur, le barème et le coefficient peuvent être fournis avec une virgule décimale.
 
 #### Scenario: Note sur 10
-- **WHEN** une note de 8/10 en maths de coefficient 1 est convertie
-- **THEN** elle est traitée comme 16/20 et le résultat est +180 minutes
+- **WHEN** une note de 8/10 est normalisée
+- **THEN** elle est traitée comme 16/20
+
+#### Scenario: Note sur 5 avec virgule
+- **WHEN** une note « 4,5 » sur « 5 » est normalisée
+- **THEN** elle est traitée comme 18/20
+
+#### Scenario: Barème de 15
+- **WHEN** une note de 2/15 est normalisée
+- **THEN** elle est traitée comme 2,67/20 (2 × 20 / 15)
 
 ### Requirement: Multiplicateur par matière
-Le système SHALL appliquer un multiplicateur propre à la matière : maths 3, français 4, histoire 2, anglais 3, EIST 3, musique 0,5, arts plastiques 0,5, sport 0,5. Une matière absente de cette table SHALL avoir un multiplicateur de 0, donc aucun effet sur le solde. La table SHALL être un paramètre de configuration.
+Le système SHALL appliquer à chaque matière, identifiée par son nom d'EcoleDirecte (comparaison insensible à la casse et aux accents), un multiplicateur : MATHEMATIQUES 3, FRANCAIS 3, ANGLAIS LV1 3, ENS.INTEG.SC.&TECHNO 3, HISTOIRE-GEOGRAPHIE 2, EDUCATION MUSICALE 0,5, ARTS PLASTIQUES 0,5, ED PHYSIQUE & SPORT 0,5. Une matière absente de la table SHALL avoir un multiplicateur de 0 et être signalée à l'appelant. La table SHALL être un paramètre de configuration.
 
 #### Scenario: Matière classée
-- **WHEN** une note de 14/20 en histoire de coefficient 1 est convertie
-- **THEN** le résultat est +60 minutes
+- **WHEN** la matière « HISTOIRE-GEOGRAPHIE » est recherchée dans la table
+- **THEN** son multiplicateur est 2
 
 #### Scenario: Matière non classée
-- **WHEN** une note de 5/20 en technologie, absente de la table, est convertie
-- **THEN** le résultat est 0 minute
+- **WHEN** la matière « TECHNOLOGIE », absente de la table, est recherchée
+- **THEN** son multiplicateur est 0 et la matière est signalée comme inconnue
 
 #### Scenario: Matière écrite sans accent ou avec une autre casse
-- **WHEN** une note est fournie avec la matière « Francais » ou « français »
-- **THEN** elle est reconnue comme la matière « français »
+- **WHEN** la matière « Francais » ou « français » est recherchée
+- **THEN** elle est reconnue comme « FRANCAIS » (multiplicateur 3)
 
-### Requirement: Taux de base
-Le système SHALL utiliser un taux de base de 15 minutes par point d'écart, paramétrable sans modifier la logique de calcul.
-
-#### Scenario: Taux de base modifié
-- **WHEN** le taux de base est configuré à 10 et une note de 15/20 en maths de coefficient 1 est convertie
-- **THEN** le résultat est +90 minutes
-
-### Requirement: Coefficient
-Le système SHALL multiplier le montant par le coefficient de l'évaluation, qui peut être décimal.
-
-#### Scenario: Évaluation à fort coefficient
-- **WHEN** une note de 15/20 en maths de coefficient 3 est convertie
-- **THEN** le résultat est +405 minutes
-
-#### Scenario: Coefficient décimal
-- **WHEN** une note de 15/20 en maths de coefficient 0,5 est convertie
-- **THEN** le résultat est arrondi à +68 minutes (67,5 arrondi)
-
-### Requirement: Arrondi
-Le système SHALL arrondir le résultat à l'entier de minutes le plus proche, la moitié étant arrondie en s'éloignant de zéro.
-
-#### Scenario: Demi-minute positive
-- **WHEN** une note de 13/20 en sport de coefficient 1 est convertie (résultat exact +7,5)
-- **THEN** le résultat est +8 minutes
-
-#### Scenario: Demi-minute négative
-- **WHEN** une note de 11/20 en sport de coefficient 1 est convertie (résultat exact −7,5)
-- **THEN** le résultat est −8 minutes
+#### Scenario: Table modifiée
+- **WHEN** la table est configurée avec « HISTOIRE-GEOGRAPHIE » à 3
+- **THEN** son multiplicateur est 3
 
 ### Requirement: Rejet des notes invalides
-Le système SHALL rejeter avec une erreur explicite toute note dont le barème est nul ou négatif, dont la valeur est négative ou supérieure au barème, ou dont le coefficient est négatif.
+Le système SHALL rejeter et signaler à l'appelant toute note numérique dont le barème est nul ou négatif, dont la valeur est négative ou supérieure au barème, ou dont le coefficient est négatif.
 
 #### Scenario: Valeur supérieure au barème
 - **WHEN** une note de 22/20 est fournie
-- **THEN** une erreur est signalée et aucune minute n'est calculée
+- **THEN** elle est rejetée avec une erreur explicite
 
 #### Scenario: Barème nul
 - **WHEN** une note est fournie avec un barème de 0
-- **THEN** une erreur est signalée
+- **THEN** elle est rejetée avec une erreur explicite
+
+#### Scenario: Coefficient négatif
+- **WHEN** une note est fournie avec un coefficient de −1
+- **THEN** elle est rejetée avec une erreur explicite
+
+### Requirement: Poids d'une note
+Le système SHALL calculer le poids d'une note comme le multiplicateur de sa matière multiplié par son coefficient, ce dernier pouvant être décimal.
+
+#### Scenario: Évaluation principale
+- **WHEN** une note de français a un coefficient de 1
+- **THEN** son poids est 3
+
+#### Scenario: Évaluation de faible coefficient
+- **WHEN** une note d'histoire-géographie a un coefficient de 0,25
+- **THEN** son poids est 0,5
+
+#### Scenario: Matière inconnue
+- **WHEN** une note appartient à une matière absente de la table
+- **THEN** son poids est 0
+
+### Requirement: Note non numérique
+Le système SHALL reconnaître comme non notée toute note dont la valeur n'est pas numérique (par exemple « Abs », « Disp », « NE » ou vide). Une telle note ne SHALL entrer dans aucun calcul et ne SHALL produire aucune erreur.
+
+#### Scenario: Élève absent
+- **WHEN** la valeur d'une note est « Abs »
+- **THEN** la note est reconnue comme non notée et n'est pas rejetée
+
+#### Scenario: Valeur avec virgule
+- **WHEN** la valeur d'une note est « 7,5 »
+- **THEN** la note est numérique

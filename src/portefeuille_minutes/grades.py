@@ -1,69 +1,60 @@
-"""Conversion d'une note en minutes (spec grade-conversion)."""
+"""Notes scolaires : normalisation sur 20, poids, validité et clé d'identification (spec grade-conversion)."""
 
-import math
 from dataclasses import dataclass
-from datetime import date
-from decimal import Decimal, InvalidOperation
 from fractions import Fraction
 
-from .config import Config
+from .config import Config, normalize_subject, to_fraction
 
 
 class InvalidGradeError(ValueError):
-    """Note incohérente (barème, valeur ou coefficient invalide)."""
+    """Note numérique incohérente (barème, valeur ou coefficient invalide)."""
 
 
 @dataclass(frozen=True)
 class Grade:
-    id: str
+    date: object  # date ou texte AAAA-MM-JJ
     subject: str
-    date: date
-    value: object  # nombre, ou texte comme « Abs » / « Disp »
+    comment: str
+    value: object  # nombre ou texte (« 7 », « 4,5 », « Abs »…)
     scale: object = 20
     coefficient: object = 1
+    non_significant: bool = False
 
-    def numeric_value(self) -> Fraction | None:
-        """Valeur numérique de la note, ou None (absent, dispensé, non noté, vide)."""
-        return _to_fraction(self.value)
+    def is_graded(self) -> bool:
+        """Vrai si la valeur est numérique (faux pour absent, dispensé, non noté, vide)."""
+        return to_fraction(self.value) is not None
 
+    @property
+    def key(self) -> tuple:
+        """Identité d'une note, sans sa valeur : EcoleDirecte n'expose pas d'identifiant."""
+        scale, coefficient = to_fraction(self.scale), to_fraction(self.coefficient)
+        return (
+            str(self.date),
+            normalize_subject(self.subject),
+            self.comment.strip(),
+            scale if scale is not None else str(self.scale),
+            coefficient if coefficient is not None else str(self.coefficient),
+        )
 
-def _to_fraction(raw: object) -> Fraction | None:
-    if isinstance(raw, bool) or raw is None:
-        return None
-    if isinstance(raw, str):
-        raw = raw.strip().replace(",", ".")
-        if not raw:
-            return None
-    try:
-        return Fraction(Decimal(str(raw)))
-    except (InvalidOperation, ValueError):
-        return None
+    def validate(self) -> None:
+        """Lève InvalidGradeError si la note numérique est incohérente."""
+        value, scale = to_fraction(self.value), to_fraction(self.scale)
+        coefficient = to_fraction(self.coefficient)
+        if value is None:
+            raise InvalidGradeError(f"{self.subject} : valeur non numérique")
+        if scale is None or scale <= 0:
+            raise InvalidGradeError(f"{self.subject} : barème invalide ({self.scale!r})")
+        if not 0 <= value <= scale:
+            raise InvalidGradeError(f"{self.subject} : valeur {value} hors du barème {scale}")
+        if coefficient is None or coefficient < 0:
+            raise InvalidGradeError(f"{self.subject} : coefficient invalide ({self.coefficient!r})")
 
+    def on_20(self) -> Fraction:
+        """Valeur ramenée sur 20 (valide la note)."""
+        self.validate()
+        return to_fraction(self.value) * 20 / to_fraction(self.scale)
 
-def round_half_away_from_zero(x: Fraction) -> int:
-    magnitude = math.floor(abs(x) + Fraction(1, 2))
-    return magnitude if x >= 0 else -magnitude
-
-
-def convert(grade: Grade, config: Config) -> int:
-    """Minutes à créditer (>0) ou débiter (<0) pour une note à valeur numérique."""
-    value = grade.numeric_value()
-    scale = _to_fraction(grade.scale)
-    coefficient = _to_fraction(grade.coefficient)
-    if value is None:
-        raise InvalidGradeError(f"note {grade.id} : valeur non numérique")
-    if scale is None or scale <= 0:
-        raise InvalidGradeError(f"note {grade.id} : barème invalide ({grade.scale!r})")
-    if not 0 <= value <= scale:
-        raise InvalidGradeError(f"note {grade.id} : valeur {value} hors du barème {scale}")
-    if coefficient is None or coefficient < 0:
-        raise InvalidGradeError(f"note {grade.id} : coefficient invalide ({grade.coefficient!r})")
-
-    on_20 = value * 20 / scale
-    minutes = (
-        config.base_rate
-        * config.multiplier_for(grade.subject)
-        * (on_20 - config.pivot)
-        * coefficient
-    )
-    return round_half_away_from_zero(minutes)
+    def weight(self, config: Config) -> Fraction:
+        """Poids : multiplicateur de la matière × coefficient."""
+        self.validate()
+        return config.multiplier_for(self.subject) * to_fraction(self.coefficient)
