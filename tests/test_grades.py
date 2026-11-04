@@ -4,8 +4,8 @@ from fractions import Fraction
 
 import pytest
 
-from portefeuille_minutes.config import Config
-from portefeuille_minutes.grades import Grade, InvalidGradeError
+from custom_components.screen_time_wallet.engine.config import Config
+from custom_components.screen_time_wallet.engine.grades import Grade, InvalidGradeError
 from real_notes import RAW, make
 
 CFG = Config()

@@ -58,3 +58,26 @@ class Grade:
         """Poids : multiplicateur de la matière × coefficient."""
         self.validate()
         return config.multiplier_for(self.subject) * to_fraction(self.coefficient)
+
+
+def key_to_json(key: tuple) -> list[str]:
+    """Clé de note sous forme JSON : les fractions sont notées « F n/d », le reste « S texte »."""
+    return [value if i < 3 else _encode_part(value) for i, value in enumerate(key)]
+
+
+def key_from_json(parts: list[str]) -> tuple:
+    return tuple(part if i < 3 else _decode_part(part) for i, part in enumerate(parts))
+
+
+def _encode_part(value) -> str:
+    if isinstance(value, Fraction):
+        return f"F {value.numerator}/{value.denominator}"
+    return f"S {value}"
+
+
+def _decode_part(text: str):
+    kind, _, body = text.partition(" ")
+    if kind == "F":
+        numerator, _, denominator = body.partition("/")
+        return Fraction(int(numerator), int(denominator))
+    return body

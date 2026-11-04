@@ -1,0 +1,12 @@
+{
+  "domain": "screen_time_wallet",
+  "name": "Portefeuille de minutes (temps d'écran)",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/jocelynlopez/HA-screen-time",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/jocelynlopez/HA-screen-time/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

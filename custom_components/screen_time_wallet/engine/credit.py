@@ -2,6 +2,7 @@
 
 import math
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from fractions import Fraction
 
 from .config import Config, to_fraction
@@ -61,11 +62,31 @@ def week_average(grades: Iterable[Grade], general: Fraction, config: Config) -> 
     return (weighted + max(Fraction(0), config.min_weight - weight) * general) / denominator
 
 
+@dataclass(frozen=True)
+class WeekDetails:
+    """Éléments du calcul du crédit de semaine, pour le compte rendu du bilan."""
+
+    subjects_count: int  # matières avec moyenne utilisable
+    fallback: bool  # moins de matières que le minimum : crédit de repli
+    general_average: Fraction | None
+    weight: Fraction  # poids total des notes comptées
+    week_average: Fraction | None
+    credit: int
+
+
+def week_details(grades: Iterable[Grade], averages: Mapping[str, object], config: Config) -> WeekDetails:
+    """Calcule le crédit de semaine et ses éléments ; crédit nul sous le minimum de matières."""
+    notes = counted_grades(grades, config)
+    weight = sum((g.weight(config) for g in notes), Fraction(0))
+    count = len(usable_averages(averages, config))
+    if count < config.min_subjects:
+        return WeekDetails(count, True, None, weight, None, 0)
+    general = general_average(averages, config)
+    average = week_average(notes, general, config)
+    exact = config.week_rate * config.multiplier_total * (average - config.pivot)
+    return WeekDetails(count, False, general, weight, average, round_half_away_from_zero(exact))
+
+
 def week_credit(grades: Iterable[Grade], averages: Mapping[str, object], config: Config) -> int:
     """Crédit de semaine (positif ou négatif) ajouté au capital notes ; 0 sous le minimum de matières."""
-    if not has_enough_subjects(averages, config):
-        return 0
-    general = general_average(averages, config)
-    average = week_average(grades, general, config)
-    exact = config.week_rate * config.multiplier_total * (average - config.pivot)
-    return round_half_away_from_zero(exact)
+    return week_details(grades, averages, config).credit

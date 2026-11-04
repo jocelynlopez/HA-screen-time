@@ -1,6 +1,6 @@
 """Les 18 notes réelles du capteur EcoleDirecte (échantillon fourni), pour les tests."""
 
-from portefeuille_minutes.grades import Grade
+from custom_components.screen_time_wallet.engine.grades import Grade
 
 # (date, date_saisie, matière, commentaire, note, sur, coefficient, non_significatif)
 RAW = [

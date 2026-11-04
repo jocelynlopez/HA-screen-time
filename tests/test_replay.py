@@ -5,8 +5,8 @@ from fractions import Fraction
 
 import pytest
 
-from portefeuille_minutes.config import to_fraction
-from portefeuille_minutes.wallet import Wallet
+from custom_components.screen_time_wallet.engine.config import to_fraction
+from custom_components.screen_time_wallet.engine.wallet import Wallet
 from real_notes import RAW, make
 
 SENSOR_AVERAGES = {  # états actuels des capteurs de moyenne (09/11)

@@ -1,0 +1,32 @@
+consume:
+  target:
+    entity:
+      integration: screen_time_wallet
+      domain: sensor
+  fields:
+    minutes:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: min
+    reason:
+      selector:
+        text:
+adjust:
+  target:
+    entity:
+      integration: screen_time_wallet
+      domain: sensor
+  fields:
+    minutes:
+      required: true
+      selector:
+        number:
+          min: -1440
+          max: 1440
+          unit_of_measurement: min
+    reason:
+      selector:
+        text:

@@ -1,0 +1,74 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nouveau portefeuille",
+        "description": "Un portefeuille de minutes de temps d'écran par enfant.",
+        "data": {"name": "Prénom de l'enfant"}
+      }
+    },
+    "error": {"name_required": "Le prénom est obligatoire."},
+    "abort": {"already_configured": "Un portefeuille existe déjà pour cet enfant."}
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options du portefeuille",
+        "menu_options": {"parametres": "Paramètres de calcul", "matieres": "Matières et multiplicateurs"}
+      },
+      "parametres": {
+        "title": "Paramètres de calcul",
+        "description": "Le temps maximal est celui d'une semaine où toutes les moyennes valent 20/20.",
+        "data": {
+          "max_hours": "Temps maximal par semaine (heures)",
+          "notes_share_percent": "Part des notes de la semaine (%)",
+          "pivot": "Note pivot (sur 20)",
+          "min_weight": "Poids minimal des notes d'une semaine",
+          "min_subjects": "Nombre minimal de matières avec moyenne",
+          "fallback_credit": "Crédit de repli (minutes)",
+          "exclude_non_significant": "Ignorer les notes non significatives",
+          "weekly_report": "Publier un rapport chaque lundi",
+          "notify_service": "Service de notification (ex. notify.mobile_app_telephone)"
+        }
+      },
+      "matieres": {
+        "title": "Matières et multiplicateurs",
+        "description": "Saisissez le nom de la matière tel qu'EcoleDirecte l'écrit. Une matière existante est modifiée, sinon elle est ajoutée.",
+        "data": {"subject": "Matière", "multiplier": "Multiplicateur", "remove": "Supprimer cette matière"}
+      }
+    },
+    "error": {
+      "invalid_config": "Ces paramètres sont incohérents (pivot ≥ 20, par exemple).",
+      "invalid_notify_service": "Saisissez un service de la forme notify.nom.",
+      "subject_required": "Le nom de la matière est obligatoire.",
+      "unknown_subject": "Cette matière n'est pas dans la table.",
+      "empty_table": "La somme des multiplicateurs ne peut pas être nulle."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "available": {"name": "Temps disponible"},
+      "weekly_credit": {"name": "Crédit hebdomadaire"},
+      "notes_capital": {"name": "Capital notes"},
+      "last_settlement": {"name": "Dernier bilan"}
+    }
+  },
+  "services": {
+    "consume": {
+      "name": "Consommer du temps",
+      "description": "Retire du temps d'écran : d'abord du crédit hebdomadaire, puis du capital notes.",
+      "fields": {
+        "minutes": {"name": "Minutes", "description": "Nombre de minutes consommées (supérieur à 0)."},
+        "reason": {"name": "Motif", "description": "Raison affichée dans le journal."}
+      }
+    },
+    "adjust": {
+      "name": "Ajuster le capital",
+      "description": "Ajoute ou retire des minutes au capital notes (ajustement parental).",
+      "fields": {
+        "minutes": {"name": "Minutes", "description": "Minutes à ajouter (positif) ou retirer (négatif), différent de 0."},
+        "reason": {"name": "Motif", "description": "Raison affichée dans le journal."}
+      }
+    }
+  }
+}

@@ -16,7 +16,7 @@ SELF = {Path(__file__).name, "test_spec_reader.py"}
 
 def covered_requirements():
     found = set()
-    for test_file in TESTS.glob("test_*.py"):
+    for test_file in TESTS.rglob("test_*.py"):
         if test_file.name in SELF:
             continue
         found.update(MARKER.findall(test_file.read_text(encoding="utf-8")))

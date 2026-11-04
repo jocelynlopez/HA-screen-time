@@ -4,14 +4,14 @@ from fractions import Fraction
 
 import pytest
 
-from portefeuille_minutes.config import Config
-from portefeuille_minutes.credit import (
+from custom_components.screen_time_wallet.engine.config import Config
+from custom_components.screen_time_wallet.engine.credit import (
     general_average,
     initial_credit,
     week_average,
     week_credit,
 )
-from portefeuille_minutes.grades import Grade
+from custom_components.screen_time_wallet.engine.grades import Grade
 
 CFG = Config()
 

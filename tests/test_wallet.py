@@ -4,9 +4,9 @@ from datetime import datetime
 
 import pytest
 
-from portefeuille_minutes.config import Config
-from portefeuille_minutes.grades import Grade
-from portefeuille_minutes.wallet import InvalidConsumptionError, Wallet
+from custom_components.screen_time_wallet.engine.config import Config
+from custom_components.screen_time_wallet.engine.grades import Grade
+from custom_components.screen_time_wallet.engine.wallet import InvalidConsumptionError, Wallet
 from real_notes import RAW, make
 
 SEVEN = {

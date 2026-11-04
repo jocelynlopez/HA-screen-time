@@ -4,7 +4,7 @@ from fractions import Fraction
 
 import pytest
 
-from portefeuille_minutes.config import Config, ConfigError
+from custom_components.screen_time_wallet.engine.config import Config, ConfigError
 
 
 # --- Paramètres configurables ---------------------------------------------------
