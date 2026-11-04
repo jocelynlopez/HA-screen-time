@@ -1,0 +1,28 @@
+[project]
+name = "portefeuille-minutes"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { email = "Jocelyn LOPEZ" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+portefeuille-minutes = "portefeuille_minutes:main"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+testpaths = ["tests"]
+markers = [
+    "requirement(name): exigence de la spec OpenSpec vérifiée par le test, au format '<capability>/<nom de l'exigence>'",
+]
