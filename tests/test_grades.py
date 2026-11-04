@@ -130,3 +130,29 @@ def test_la_cle_ignore_la_valeur_et_les_espaces_du_commentaire():
     a = Grade("2026-10-12", "Francais", "Dictée ", 2, 15, "0,75")
     b = Grade("2026-10-12", "FRANCAIS", "Dictée", 15, 15, 0.75)
     assert a.key == b.key
+
+
+# --- Reconnaissance tolérante des noms de matières ---------------------------------------
+
+@pytest.mark.requirement("grade-conversion/Multiplicateur par matière")
+@pytest.mark.parametrize(
+    "name, expected",
+    [("ed.physique & sport.", Fraction(1, 2)), ("ED PHYSIQUE & SPORT", Fraction(1, 2)),
+     ("ENS INTEG SC TECHNO", 3), ("ens.integ.sc.&techno", 3), ("Histoire-Géographie", 2)],
+)
+def test_matiere_ecrite_avec_de_la_ponctuation(name, expected):
+    assert CFG.multiplier_for(name) == expected
+
+
+@pytest.mark.requirement("grade-conversion/Multiplicateur par matière")
+def test_matieres_voisines_distinguees():
+    assert CFG.multiplier_for("ANGLAIS LV1") == 3
+    assert CFG.multiplier_for("ANGLAIS LV2") == 0 and not CFG.is_known("ANGLAIS LV2")
+
+
+@pytest.mark.requirement("screen-time-wallet/État sérialisable")
+def test_cles_enregistrees_avec_l_ancienne_normalisation_restent_reconnues():
+    from custom_components.screen_time_wallet.engine.grades import key_from_json
+
+    old = ["2026-10-08", "anglais lv1", "Test", "F 15/1", "F 3/4"]  # matière écrite à l'ancienne
+    assert key_from_json(old) == Grade("2026-10-08", "ANGLAIS LV1", "Test", 15, 15, "0,75").key

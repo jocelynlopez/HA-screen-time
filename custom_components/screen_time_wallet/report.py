@@ -21,6 +21,8 @@ TEXTS = {
         "anomaly_title": "Portefeuille de {name} : à vérifier",
         "unknown_subjects": "Matières inconnues (sans effet) : {subjects}. Ajoutez-les avec leur multiplicateur dans les options de l'intégration, étape « Matières ».",
         "rejected_note": "Note rejetée : {subject} {value}/{scale} du {date} ({reason})",
+        "source_title": "Portefeuille de {name} : source indisponible",
+        "source_message": "Le bilan du lundi n'a pas pu être effectué : {error}. Il sera retenté automatiquement. Vérifiez l'intégration EcoleDirecte et le capteur {entity}.",
     },
     "en": {
         "report_title": "{name}'s wallet report",
@@ -37,6 +39,8 @@ TEXTS = {
         "anomaly_title": "{name}'s wallet: needs attention",
         "unknown_subjects": "Unknown subjects (no effect): {subjects}. Add them with their multiplier in the integration options, \"Subjects\" step.",
         "rejected_note": "Rejected grade: {subject} {value}/{scale} of {date} ({reason})",
+        "source_title": "{name}'s wallet: source unavailable",
+        "source_message": "The Monday settlement could not be done: {error}. It will be retried automatically. Check the EcoleDirecte integration and the sensor {entity}.",
     },
 }
 
@@ -86,6 +90,12 @@ def render_report(reports: list[Report], name: str, config: Config, language: st
         lines.append(t["totals"].format(capital=f"{report.notes_capital:+d}", available=report.available))
         sections.append("\n".join(lines))
     return t["report_title"].format(name=name), "\n\n".join(sections)
+
+
+def render_source_down(name: str, entity: str, error: str, language: str) -> tuple[str, str]:
+    """Titre et message de la notification de source indisponible."""
+    t = TEXTS[_language(language)]
+    return t["source_title"].format(name=name), t["source_message"].format(error=error, entity=entity)
 
 
 def render_anomalies(reports: list[Report], name: str, language: str) -> tuple[str, str] | None:

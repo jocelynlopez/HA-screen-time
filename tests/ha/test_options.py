@@ -106,8 +106,10 @@ async def test_etat_conserve_apres_modification(hass, loaded):
 @pytest.mark.requirement("ha-integration/Options modifiables dans l'interface")
 async def test_valeurs_par_defaut_affichees(hass, loaded):
     form = await open_step(hass, loaded, "parametres")
-    defaults = {str(key): key.default() for key in form["data_schema"].schema}
+    schema = {str(key): key for key in form["data_schema"].schema}
+    defaults = {name: key.default() for name, key in schema.items() if name != "notes_entity"}
     assert defaults == PARAMS
+    assert schema["notes_entity"].description["suggested_value"] is None  # aucun capteur de notes
     assert DEFAULT_OPTIONS["weekly_report"] is True and DEFAULT_OPTIONS["notify_service"] == ""
 
 
@@ -146,3 +148,29 @@ async def test_table_vide_refusee(hass, loaded):
 @pytest.mark.requirement("ha-integration/Table des matières modifiable")
 async def test_table_par_defaut_preremplie(hass, loaded):
     assert set(config_of(loaded).subject_multipliers) == set(Config().subject_multipliers)
+
+
+# --- Capteur de notes EcoleDirecte (option) ----------------------------------------------------------
+
+@pytest.mark.requirement("ha-integration/Options modifiables dans l'interface")
+async def test_choix_du_capteur_de_notes(hass, loaded):
+    hass.states.async_set("sensor.ed_mael_lopez_notes", "0", {"notes": []})
+    result = await save_params(hass, loaded, notes_entity="sensor.ed_mael_lopez_notes")
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert loaded.options["notes_entity"] == "sensor.ed_mael_lopez_notes"
+    assert loaded.runtime_data.notes_entity == "sensor.ed_mael_lopez_notes"
+
+
+@pytest.mark.requirement("ha-integration/Options modifiables dans l'interface")
+async def test_capteur_de_notes_inexistant_refuse(hass, loaded):
+    result = await save_params(hass, loaded, notes_entity="sensor.n_existe_pas")
+    assert result["type"] is FlowResultType.FORM and result["errors"] == {"notes_entity": "unknown_entity"}
+    assert loaded.options.get("notes_entity", "") == ""
+
+
+@pytest.mark.requirement("ha-integration/Options modifiables dans l'interface")
+async def test_retour_sans_source_quand_le_capteur_est_vide(hass, loaded):
+    hass.states.async_set("sensor.ed_mael_lopez_notes", "0", {"notes": []})
+    await save_params(hass, loaded, notes_entity="sensor.ed_mael_lopez_notes")
+    await save_params(hass, loaded)  # champ vidé : absent des données reçues
+    assert loaded.options["notes_entity"] == "" and loaded.runtime_data.notes_entity == ""

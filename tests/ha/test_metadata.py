@@ -23,3 +23,10 @@ def test_manifeste_valide():
 def test_fichier_hacs_valide():
     hacs = json.loads((ROOT / "hacs.json").read_text(encoding="utf-8"))
     assert hacs["name"]
+
+
+@pytest.mark.requirement("ha-integration/Ordre de chargement")
+def test_ecole_directe_en_after_dependencies_pas_en_dependencies():
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    assert "ecole_directe" in manifest["after_dependencies"]
+    assert "ecole_directe" not in manifest.get("dependencies", [])

@@ -13,6 +13,10 @@ OPT_FALLBACK = "fallback_credit"
 OPT_EXCLUDE_NS = "exclude_non_significant"
 OPT_WEEKLY_REPORT = "weekly_report"
 OPT_NOTIFY_SERVICE = "notify_service"
+OPT_NOTES_ENTITY = "notes_entity"
 OPT_MULTIPLIERS = "multipliers"
+
+RETRY_DELAY_MINUTES = 5
+MAX_RETRIES = 3
 
 SIGNAL_UPDATE = f"{DOMAIN}_update_{{entry_id}}"

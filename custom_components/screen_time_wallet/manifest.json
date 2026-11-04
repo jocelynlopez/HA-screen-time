@@ -8,5 +8,8 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/jocelynlopez/HA-screen-time/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "after_dependencies": [
+    "ecole_directe"
+  ]
 }

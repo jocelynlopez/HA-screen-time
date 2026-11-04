@@ -22,15 +22,15 @@ def to_fraction(raw) -> Fraction | None:
             return None
     try:
         return Fraction(Decimal(str(raw)))
-    except (InvalidOperation, ValueError):
+    except (InvalidOperation, ValueError, OverflowError):
         return None
 
 
 def normalize_subject(name: str) -> str:
-    """Nom de matière sans accents, casse ni espaces superflus."""
+    """Nom de matière réduit à ses lettres et chiffres : sans accents, casse, ponctuation ni espaces."""
     decomposed = unicodedata.normalize("NFD", name)
     stripped = "".join(c for c in decomposed if unicodedata.category(c) != "Mn")
-    return " ".join(stripped.casefold().split())
+    return "".join(c for c in stripped.casefold() if c.isalnum())
 
 
 # Noms de matières tels que les fournit EcoleDirecte.

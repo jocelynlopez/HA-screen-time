@@ -66,7 +66,11 @@ def key_to_json(key: tuple) -> list[str]:
 
 
 def key_from_json(parts: list[str]) -> tuple:
-    return tuple(part if i < 3 else _decode_part(part) for i, part in enumerate(parts))
+    """Relit une clé enregistrée ; la matière est renormalisée pour les états écrits avec une ancienne normalisation."""
+    return tuple(
+        normalize_subject(part) if i == 1 else part if i < 3 else _decode_part(part)
+        for i, part in enumerate(parts)
+    )
 
 
 def _encode_part(value) -> str:

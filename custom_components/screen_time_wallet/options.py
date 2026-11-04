@@ -9,6 +9,7 @@ from .const import (
     OPT_MIN_SUBJECTS,
     OPT_MIN_WEIGHT,
     OPT_MULTIPLIERS,
+    OPT_NOTES_ENTITY,
     OPT_NOTES_SHARE,
     OPT_NOTIFY_SERVICE,
     OPT_PIVOT,
@@ -26,6 +27,7 @@ DEFAULT_OPTIONS = {
     OPT_EXCLUDE_NS: False,
     OPT_WEEKLY_REPORT: True,
     OPT_NOTIFY_SERVICE: "",
+    OPT_NOTES_ENTITY: "",
     OPT_MULTIPLIERS: {name: float(value) for name, value in DEFAULT_MULTIPLIERS.items()},
 }
 

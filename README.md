@@ -12,8 +12,9 @@ chaque lundi à partir des moyennes et des notes scolaires.
 - Le **temps disponible** est la somme des deux. La consommation débite d'abord le crédit hebdomadaire.
 - Un **rapport** détaille le calcul chaque lundi (notification persistante, et service `notify` optionnel).
 
-Cette version est la base : sans source de notes, le bilan applique le crédit de repli (240 min par défaut).
-La lecture des notes EcoleDirecte et la mesure de la consommation arrivent dans les versions suivantes.
+Sans source de notes, le bilan applique le crédit de repli (240 min par défaut). Avec la **source EcoleDirecte**
+(voir plus bas), il utilise les vraies moyennes et les vraies notes. La mesure de la consommation arrive dans une
+version suivante.
 
 ## Installation
 
@@ -34,6 +35,30 @@ l'enfant (une entrée par enfant).
 - **Matières et multiplicateurs** : ajouter, modifier ou supprimer une matière (nom tel qu'écrit par EcoleDirecte).
 
 Une matière inconnue ou une note rejetée déclenche une notification.
+
+## Source EcoleDirecte
+
+L'intégration lit les entités de l'intégration Home Assistant
+[`ecole_directe`](https://github.com/hacf-fr/hass-ecoledirecte) ; elle ne se connecte jamais elle-même à EcoleDirecte.
+
+1. Installer et configurer `ecole_directe` pour l'enfant.
+2. Dans les options du portefeuille, *Paramètres de calcul*, choisir le **capteur de notes** (par exemple
+   `sensor.ed_mael_lopez_notes`).
+3. Les **moyennes par matière** sont découvertes automatiquement : ce sont les capteurs de la même intégration qui ont
+   les attributs `Nom` et `Code`, leur état étant la moyenne.
+
+Au premier choix du capteur (ou à son changement), les notes déjà visibles sont **mémorisées sans effet** et le crédit
+hebdomadaire est calculé sur les moyennes actuelles. Seules les notes saisies ensuite comptent.
+
+À savoir :
+
+- Les noms de matières sont reconnus sans tenir compte de la casse, des accents, de la ponctuation ni des espaces
+  (`ed.physique & sport.` est le sport). Une matière absente de la table est signalée par une notification.
+- Dans l'intégration EcoleDirecte, **augmenter « Notes maximum affichées »** (15 par défaut) : le portefeuille ne voit
+  que les notes affichées par ce capteur.
+- Si la source est indisponible quand un bilan est dû (démarrage de Home Assistant, capteur absent), le bilan est
+  retenté 3 fois à 5 minutes d'intervalle, puis chaque nuit ; une notification persistante signale la panne et disparaît
+  au bilan réussi.
 
 ## Entités
 

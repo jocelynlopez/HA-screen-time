@@ -155,6 +155,14 @@ class Wallet:
         self.notes_capital += minutes
         self._record(Movement("ajustement", now, 0, minutes, reason))
 
+    def activate_source(self, now: datetime, averages: Mapping[str, object], notes: Iterable[Grade]) -> None:
+        """Active une source : notes visibles mémorisées sans effet, crédit hebdomadaire = crédit initial."""
+        initial = initial_credit(averages, self.config)
+        change = initial - self.weekly_credit
+        self.weekly_credit = initial
+        self.seen_keys |= {g.key for g in notes}
+        self._record(Movement("initialisation", now, change, 0, "", {"initial_credit": initial}))
+
     def to_dict(self) -> dict:
         """État compatible JSON (la configuration n'en fait pas partie : ce sont les options)."""
         return {

@@ -145,3 +145,35 @@ def test_credit_de_repli_dans_le_compte_rendu():
     assert report.fallback is True
     assert report.general_average is None and report.week_average is None
     assert report.week_credit == 0 and report.initial_credit == 240
+
+
+# --- Activation d'une source ---------------------------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Activation d'une source")
+def test_notes_visibles_memorisees_a_l_activation():
+    from real_notes import RAW, make
+
+    visible = [make(r) for r in RAW]
+    wallet = Wallet.create(MONDAY, {})  # sans source
+    wallet.activate_source(datetime(2026, 11, 4), SEVEN, visible)
+    reports = wallet.settle(NEXT_MONDAY, SEVEN, visible)
+    assert len(visible) == 18 and reports[0].counted == []
+
+
+@pytest.mark.requirement("screen-time-wallet/Activation d'une source")
+def test_credit_hebdomadaire_remplace_capital_inchange():
+    wallet = Wallet.create(MONDAY, {})
+    wallet.notes_capital = 100
+    now = datetime(2026, 11, 4)
+    wallet.activate_source(now, SEVEN, [])
+    assert (wallet.weekly_credit, wallet.notes_capital) == (228, 100)
+    assert wallet.last_settlement == MONDAY
+    assert wallet.movements[-1] == Movement("initialisation", now, -12, 0, "")
+    assert wallet.movements[-1].detail == {"initial_credit": 228}
+
+
+@pytest.mark.requirement("screen-time-wallet/Activation d'une source")
+def test_activation_avec_moins_de_quatre_matieres():
+    wallet = Wallet.create(MONDAY, {})
+    wallet.activate_source(datetime(2026, 11, 4), TWO, [])
+    assert wallet.weekly_credit == 240

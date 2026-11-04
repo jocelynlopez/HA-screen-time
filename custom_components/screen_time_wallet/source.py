@@ -13,6 +13,10 @@ class SourceData:
     notes: Sequence[Grade]
 
 
+class SourceUnavailableError(Exception):
+    """La source ne peut pas fournir de données pour l'instant (capteur absent, indisponible…)."""
+
+
 class GradesSource(Protocol):
     """Fournit les données d'un bilan. Peut lever une exception si la source est indisponible."""
 

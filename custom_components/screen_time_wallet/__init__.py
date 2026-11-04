@@ -41,7 +41,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> bo
             _LOGGER.error("État illisible pour %s, entrée non chargée : %s", entry.title, error)
             raise ConfigEntryError(f"État enregistré illisible : {error}") from error
 
-    runtime = WalletRuntime(hass, entry, store, wallet)
+    runtime = WalletRuntime(hass, entry, store, wallet, (data or {}).get("source_entity", ""))
     if is_new:
         await runtime.async_save()
     entry.runtime_data = runtime
@@ -49,10 +49,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> bo
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     async def _daily(_now) -> None:
-        await runtime.async_settle()  # le cœur décide s'il y a un lundi à traiter
+        runtime.reset_retries()
+        await runtime.async_refresh()  # le cœur décide s'il y a un lundi à traiter
 
     entry.async_on_unload(async_track_time_change(hass, _daily, hour=0, minute=0, second=0))
-    await runtime.async_settle()  # rattrapage des lundis manqués pendant un arrêt
+    entry.async_on_unload(runtime.async_cancel_retry)
+    await runtime.async_refresh()  # activation de la source et rattrapage des lundis manqués
     return True
 
 

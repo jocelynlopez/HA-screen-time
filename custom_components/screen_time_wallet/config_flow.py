@@ -5,6 +5,8 @@ import re
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_NAME
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import selector
 
 from .const import (
     DOMAIN,
@@ -14,6 +16,7 @@ from .const import (
     OPT_MIN_SUBJECTS,
     OPT_MIN_WEIGHT,
     OPT_MULTIPLIERS,
+    OPT_NOTES_ENTITY,
     OPT_NOTES_SHARE,
     OPT_NOTIFY_SERVICE,
     OPT_PIVOT,
@@ -60,8 +63,13 @@ class ScreenTimeWalletOptionsFlow(OptionsFlow):
             candidate = {**current, **user_input}
             service = candidate.get(OPT_NOTIFY_SERVICE, "").strip()
             candidate[OPT_NOTIFY_SERVICE] = service
+            # un champ d'entité vidé est absent des données reçues : on le lit comme « aucun capteur »
+            notes_entity = user_input.get(OPT_NOTES_ENTITY) or ""
+            candidate[OPT_NOTES_ENTITY] = notes_entity
             if service and not NOTIFY_SERVICE.match(service):
                 errors[OPT_NOTIFY_SERVICE] = "invalid_notify_service"
+            elif notes_entity and not self._entity_exists(notes_entity):
+                errors[OPT_NOTES_ENTITY] = "unknown_entity"
             else:
                 try:
                     build_config(candidate)
@@ -91,9 +99,17 @@ class ScreenTimeWalletOptionsFlow(OptionsFlow):
                 vol.Required(OPT_EXCLUDE_NS, default=current[OPT_EXCLUDE_NS]): bool,
                 vol.Required(OPT_WEEKLY_REPORT, default=current[OPT_WEEKLY_REPORT]): bool,
                 vol.Optional(OPT_NOTIFY_SERVICE, default=current[OPT_NOTIFY_SERVICE]): str,
+                vol.Optional(
+                    OPT_NOTES_ENTITY, description={"suggested_value": current[OPT_NOTES_ENTITY] or None}
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", integration="ecole_directe")
+                ),
             }
         )
         return self.async_show_form(step_id="parametres", data_schema=schema, errors=errors)
+
+    def _entity_exists(self, entity_id: str) -> bool:
+        return self.hass.states.get(entity_id) is not None or er.async_get(self.hass).async_get(entity_id) is not None
 
     async def async_step_matieres(self, user_input: dict | None = None) -> ConfigFlowResult:
         current = with_defaults(self.config_entry.options)

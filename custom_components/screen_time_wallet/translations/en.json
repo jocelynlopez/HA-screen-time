@@ -4,17 +4,26 @@
       "user": {
         "title": "New wallet",
         "description": "One screen-time minutes wallet per child.",
-        "data": {"name": "Child's first name"}
+        "data": {
+          "name": "Child's first name"
+        }
       }
     },
-    "error": {"name_required": "The first name is required."},
-    "abort": {"already_configured": "A wallet already exists for this child."}
+    "error": {
+      "name_required": "The first name is required."
+    },
+    "abort": {
+      "already_configured": "A wallet already exists for this child."
+    }
   },
   "options": {
     "step": {
       "init": {
         "title": "Wallet options",
-        "menu_options": {"parametres": "Calculation settings", "matieres": "Subjects and multipliers"}
+        "menu_options": {
+          "parametres": "Calculation settings",
+          "matieres": "Subjects and multipliers"
+        }
       },
       "parametres": {
         "title": "Calculation settings",
@@ -28,13 +37,18 @@
           "fallback_credit": "Fallback credit (minutes)",
           "exclude_non_significant": "Ignore non-significant grades",
           "weekly_report": "Publish a report every Monday",
-          "notify_service": "Notification service (e.g. notify.mobile_app_phone)"
+          "notify_service": "Notification service (e.g. notify.mobile_app_phone)",
+          "notes_entity": "EcoleDirecte notes sensor (optional)"
         }
       },
       "matieres": {
         "title": "Subjects and multipliers",
         "description": "Enter the subject name as EcoleDirecte writes it. An existing subject is updated, otherwise it is added.",
-        "data": {"subject": "Subject", "multiplier": "Multiplier", "remove": "Remove this subject"}
+        "data": {
+          "subject": "Subject",
+          "multiplier": "Multiplier",
+          "remove": "Remove this subject"
+        }
       }
     },
     "error": {
@@ -42,15 +56,24 @@
       "invalid_notify_service": "Enter a service shaped like notify.name.",
       "subject_required": "The subject name is required.",
       "unknown_subject": "This subject is not in the table.",
-      "empty_table": "The sum of the multipliers cannot be zero."
+      "empty_table": "The sum of the multipliers cannot be zero.",
+      "unknown_entity": "This entity does not exist."
     }
   },
   "entity": {
     "sensor": {
-      "available": {"name": "Available time"},
-      "weekly_credit": {"name": "Weekly credit"},
-      "notes_capital": {"name": "Notes capital"},
-      "last_settlement": {"name": "Last settlement"}
+      "available": {
+        "name": "Available time"
+      },
+      "weekly_credit": {
+        "name": "Weekly credit"
+      },
+      "notes_capital": {
+        "name": "Notes capital"
+      },
+      "last_settlement": {
+        "name": "Last settlement"
+      }
     }
   },
   "services": {
@@ -58,16 +81,28 @@
       "name": "Consume time",
       "description": "Removes screen time: from the weekly credit first, then from the notes capital.",
       "fields": {
-        "minutes": {"name": "Minutes", "description": "Minutes consumed (greater than 0)."},
-        "reason": {"name": "Reason", "description": "Reason shown in the log."}
+        "minutes": {
+          "name": "Minutes",
+          "description": "Minutes consumed (greater than 0)."
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Reason shown in the log."
+        }
       }
     },
     "adjust": {
       "name": "Adjust capital",
       "description": "Adds or removes minutes from the notes capital (parental adjustment).",
       "fields": {
-        "minutes": {"name": "Minutes", "description": "Minutes to add (positive) or remove (negative), not 0."},
-        "reason": {"name": "Reason", "description": "Reason shown in the log."}
+        "minutes": {
+          "name": "Minutes",
+          "description": "Minutes to add (positive) or remove (negative), not 0."
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Reason shown in the log."
+        }
       }
     }
   }
