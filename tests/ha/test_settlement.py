@@ -132,12 +132,14 @@ REJECTED = [note("FRANCAIS", 22, comment="invalide")]
 
 
 @pytest.mark.requirement("ha-integration/Notifications")
-async def test_matiere_inconnue_notifiee(hass, freezer, entry):
-    await start(hass, freezer, entry, source=FakeSource(SEVEN, UNKNOWN))
+async def test_matiere_inconnue_ajoutee_sans_anomalie(hass, freezer, entry):
+    runtime = await start(hass, freezer, entry, source=FakeSource(SEVEN, UNKNOWN))
     with patch(CREATE) as create:
         await tick(hass, freezer, MONDAY_9)
-    (title, message), = calls_by_kind(create)["anomalies"]
-    assert "TECHNOLOGIE" in message and "options" in message
+    kinds = calls_by_kind(create)
+    assert "anomalies" not in kinds
+    assert runtime.wallet.config.multiplier_for("TECHNOLOGIE") == 1  # ajoutée avant le calcul
+    assert list(kinds) == ["subjects", "report"]
 
 
 @pytest.mark.requirement("ha-integration/Notifications")
@@ -158,7 +160,7 @@ async def test_service_de_notification_configure(hass, freezer):
     with patch(CREATE) as create:
         await tick(hass, freezer, MONDAY_9)
     persistent = {message for kinds in calls_by_kind(create).values() for _, message in kinds}
-    assert {call.data["message"] for call in sent} == persistent  # anomalie et rapport
+    assert {call.data["message"] for call in sent} == persistent  # ajout de matière et rapport
 
 
 @pytest.mark.requirement("ha-integration/Notifications")
@@ -237,7 +239,7 @@ async def test_rapport_envoye_au_service_de_notification(hass, freezer):
 async def test_rapport_desactive_anomalies_conservees(hass, freezer):
     entry = make_entry(options={"weekly_report": False})
     entry.add_to_hass(hass)
-    await start(hass, freezer, entry, source=FakeSource(SEVEN, UNKNOWN))
+    await start(hass, freezer, entry, source=FakeSource(SEVEN, REJECTED))
     with patch(CREATE) as create:
         await tick(hass, freezer, MONDAY_9)
     kinds = calls_by_kind(create)

@@ -63,23 +63,25 @@ class EcoleDirecteSource:
         raw = state.attributes.get(ATTR_NOTES)
         if not isinstance(raw, list):
             raise SourceUnavailableError(f"{self.notes_entity_id} n'a pas d'attribut « {ATTR_NOTES} »")
-        return SourceData(self._discover_averages(), parse_notes(raw))
+        averages, names = self._discover_subjects()
+        return SourceData(averages, parse_notes(raw), names)
 
-    def _discover_averages(self) -> dict[str, Fraction]:
-        """Moyennes des capteurs de matière (attributs Nom et Code) de la même entrée EcoleDirecte."""
+    def _discover_subjects(self) -> tuple[dict[str, Fraction], list[str]]:
+        """Moyennes et noms des capteurs de matière (attributs Nom et Code) de la même entrée EcoleDirecte."""
         registry = er.async_get(self.hass)
         notes_entry = registry.async_get(self.notes_entity_id)
         if notes_entry is None or notes_entry.config_entry_id is None:
             _LOGGER.warning("%s n'est pas rattaché à une entrée de configuration : aucune moyenne", self.notes_entity_id)
-            return {}
-        averages = {}
+            return {}, []
+        averages, names = {}, []
         for entry in er.async_entries_for_config_entry(registry, notes_entry.config_entry_id):
             if entry.domain != "sensor" or entry.entity_id == self.notes_entity_id:
                 continue
             state = self.hass.states.get(entry.entity_id)
             if state is None or ATTR_SUBJECT_NAME not in state.attributes or ATTR_SUBJECT_CODE not in state.attributes:
                 continue
+            names.append(state.attributes[ATTR_SUBJECT_NAME])
             average = parse_average(state.state)
             if average is not None:
                 averages[state.attributes[ATTR_SUBJECT_NAME]] = average
-        return averages
+        return averages, names

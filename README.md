@@ -35,9 +35,24 @@ entry per child).
 - **Calculation settings**: maximum time per week (hours, for 20/20 everywhere), share of the week's grades (%), pivot
   grade, minimum weight, minimum number of subjects, fallback credit, non-significant grades, weekly report,
   notification service, EcoleDirecte notes sensor, screen time sensors.
-- **Subjects and multipliers**: add, edit or remove a subject (name as written by EcoleDirecte).
+- **Subjects and multipliers**: add, edit or remove a subject (name as written by EcoleDirecte), or tick **Detect the
+  subjects of the source** to add at once those the source publishes.
 
-An unknown subject or a rejected grade triggers a notification.
+A rejected grade triggers a notification.
+
+### Subjects are detected automatically
+
+When a source is activated and before each settlement, every subject published by the source (the per-subject average
+sensors, with or without an average, and the subjects of the grades) that is not yet in the table is **added with
+multiplier 1** and used in that calculation. A notification names the added subjects.
+
+- Set the multiplier of an added subject in *Subjects and multipliers*; **0 excludes it** from the calculation (useful
+  for non-academic items such as a class-life entry). A subject already in the table, even at 0, is never modified.
+- Deleting a subject that the source still publishes adds it back with multiplier 1 at the next detection: use 0 to
+  exclude it instead.
+- **Detect the subjects of the source** (tick it in *Subjects and multipliers*, the subject name is then optional) runs
+  the same detection on demand and shows the result in the window, without any notification. The weekly credit is not
+  recomputed: the added subjects count from the next settlement.
 
 ## EcoleDirecte source
 
@@ -56,7 +71,7 @@ weekly credit is computed from the current averages. Only grades entered afterwa
 Good to know:
 
 - Subject names are matched ignoring case, accents, punctuation and spaces (`ed.physique & sport.` is sport). A subject
-  missing from the table is reported by a notification.
+  missing from the table is added automatically (see above).
 - In the EcoleDirecte integration, **increase "Maximum notes displayed"** (15 by default): the wallet only sees the
   grades displayed by that sensor.
 - If the source is unavailable when a settlement is due (Home Assistant startup, missing sensor), the settlement is
@@ -165,9 +180,25 @@ l'enfant (une entrée par enfant).
 - **Paramètres de calcul** : temps maximal par semaine (heures, pour 20/20 partout), part des notes (%), note pivot,
   poids minimal, nombre minimal de matières, crédit de repli, notes non significatives, rapport hebdomadaire, service de
   notification, capteur de notes EcoleDirecte, capteurs de temps d'écran.
-- **Matières et multiplicateurs** : ajouter, modifier ou supprimer une matière (nom tel qu'écrit par EcoleDirecte).
+- **Matières et multiplicateurs** : ajouter, modifier ou supprimer une matière (nom tel qu'écrit par EcoleDirecte), ou
+  cocher **Détecter les matières de la source** pour ajouter d'un coup celles que la source publie.
 
-Une matière inconnue ou une note rejetée déclenche une notification.
+Une note rejetée déclenche une notification.
+
+### Les matières sont détectées automatiquement
+
+À l'activation d'une source et avant chaque bilan, chaque matière publiée par la source (capteurs de moyenne par
+matière, avec ou sans moyenne, et matières des notes) qui n'est pas encore dans la table est **ajoutée avec le
+multiplicateur 1** et utilisée dans ce calcul. Une notification nomme les matières ajoutées.
+
+- Réglez le multiplicateur d'une matière ajoutée dans *Matières et multiplicateurs* ; **0 l'exclut** du calcul (utile
+  pour les rubriques non scolaires, comme la vie de classe). Une matière déjà dans la table, même à 0, n'est jamais
+  modifiée.
+- Supprimer une matière que la source publie toujours la rajoute avec le multiplicateur 1 à la détection suivante :
+  utilisez 0 pour l'exclure.
+- **Détecter les matières de la source** (case à cocher de *Matières et multiplicateurs*, le nom de la matière est alors
+  facultatif) lance la même détection à la demande et affiche le résultat dans la fenêtre, sans notification. Le
+  crédit hebdomadaire n'est pas recalculé : les matières ajoutées comptent à partir du prochain bilan.
 
 ## Source EcoleDirecte
 
@@ -186,7 +217,7 @@ hebdomadaire est calculé sur les moyennes actuelles. Seules les notes saisies e
 À savoir :
 
 - Les noms de matières sont reconnus sans tenir compte de la casse, des accents, de la ponctuation ni des espaces
-  (`ed.physique & sport.` est le sport). Une matière absente de la table est signalée par une notification.
+  (`ed.physique & sport.` est le sport). Une matière absente de la table est ajoutée automatiquement (voir plus haut).
 - Dans l'intégration EcoleDirecte, **augmenter « Notes maximum affichées »** (15 par défaut) : le portefeuille ne voit
   que les notes affichées par ce capteur.
 - Si la source est indisponible quand un bilan est dû (démarrage de Home Assistant, capteur absent), le bilan est

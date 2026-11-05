@@ -17,6 +17,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     DOMAIN,
     MAX_RETRIES,
+    OPT_MULTIPLIERS,
     OPT_NOTES_ENTITY,
     OPT_NOTIFY_SERVICE,
     OPT_USAGE_ENTITIES,
@@ -27,9 +28,9 @@ from .const import (
 from .ecole_directe_source import EcoleDirecteSource
 from .engine.usage import Baseline, consumed_since, reading_minutes
 from .engine.wallet import Report, Wallet
-from .options import with_defaults
-from .report import render_anomalies, render_report, render_source_down
-from .source import GradesSource, NullSource
+from .options import build_config, with_defaults
+from .report import render_anomalies, render_report, render_source_down, render_subjects_added
+from .source import GradesSource, NullSource, SourceData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,6 +38,10 @@ _LOGGER = logging.getLogger(__name__)
 def local_now() -> datetime:
     """Date et heure locales de HA, sans fuseau (le cœur raisonne en heure locale naïve)."""
     return dt_util.now().replace(tzinfo=None)
+
+
+class NoSourceError(Exception):
+    """Aucun capteur de notes n'est choisi dans les options."""
 
 
 class WalletRuntime:
@@ -61,6 +66,7 @@ class WalletRuntime:
         self.baselines: dict[str, Baseline] = dict(baselines or {})  # relevé de référence de chaque capteur
         self._retries = 0
         self._cancel_retry = None
+        self._own_options_update = False  # mise à jour des options faite par le runtime : pas de rechargement
         self.configure_source()
 
     def configure_source(self) -> None:
@@ -71,6 +77,11 @@ class WalletRuntime:
     @property
     def notes_entity(self) -> str:
         return with_defaults(self.entry.options)[OPT_NOTES_ENTITY]
+
+    def consume_own_options_update(self) -> bool:
+        """Vrai (une seule fois) si la dernière mise à jour des options vient du runtime lui-même."""
+        own, self._own_options_update = self._own_options_update, False
+        return own
 
     @property
     def usage_entities(self) -> list[str]:
@@ -208,6 +219,7 @@ class WalletRuntime:
         entity = self.notes_entity
         if entity == self.source_entity:
             return True
+        added: list[str] = []
         async with self.lock:
             if entity:
                 try:
@@ -215,10 +227,12 @@ class WalletRuntime:
                 except Exception as error:  # noqa: BLE001 - la source est un point d'extension
                     _LOGGER.warning("Activation reportée pour %s : %s", self.entry.title, error)
                     return False
+                added = self._adopt_subjects(data)
                 self.wallet.activate_source(now or local_now(), data.averages, data.notes)
             self.source_entity = entity
             await self.async_save()
         self.async_notify_entities()
+        await self._async_publish_subjects(added)
         return True
 
     async def async_settle(self, now: datetime | None = None) -> list[Report]:
@@ -238,14 +252,52 @@ class WalletRuntime:
                 _LOGGER.warning("Bilan reporté pour %s : source indisponible (%s)", self.entry.title, error)
                 self._notify_source_down(error)
                 return False
+            added = self._adopt_subjects(data)
             reports = self.wallet.settle(now, data.averages, data.notes)
             await self.async_save()
         persistent_notification.async_dismiss(self.hass, self._source_notification_id)
         self.async_notify_entities()
+        await self._async_publish_subjects(added)
         await self._async_publish(reports)
         if out is not None:
             out.extend(reports)
         return True
+
+    def _adopt_subjects(self, data: SourceData) -> list[str]:
+        """Ajoute à la table des options, avec le multiplicateur 1, les matières de la source qui n'y sont pas.
+
+        La configuration du portefeuille est reconstruite pour le calcul en cours ; les options sont enregistrées
+        sans recharger l'entrée. À appeler sous le verrou. Renvoie les matières ajoutées."""
+        added = [name for name in data.all_subjects if not self.wallet.config.is_known(name)]
+        if not added:
+            return []
+        table = {**with_defaults(self.entry.options)[OPT_MULTIPLIERS], **{name: 1 for name in added}}
+        options = {**self.entry.options, OPT_MULTIPLIERS: table}
+        self.wallet.config = build_config(options)
+        self._own_options_update = True
+        if not self.hass.config_entries.async_update_entry(self.entry, options=options):
+            self._own_options_update = False
+        return added
+
+    async def async_detect_subjects(self) -> list[str]:
+        """Détection à la demande : ajoute les matières de la source absentes de la table (sans notification).
+
+        Lève NoSourceError s'il n'y a pas de capteur de notes, ou l'erreur de la source si elle est indisponible."""
+        if not self.notes_entity:
+            raise NoSourceError
+        async with self.lock:
+            data = await self.source.async_fetch()
+            return self._adopt_subjects(data)
+
+    async def _async_publish_subjects(self, added: list[str]) -> None:
+        """Notification persistante (et service notify) des matières ajoutées automatiquement."""
+        if not added:
+            return
+        title, message = render_subjects_added(self.entry.title, added, self.hass.config.language)
+        persistent_notification.async_create(
+            self.hass, message, title=title, notification_id=f"{DOMAIN}_{self.entry.entry_id}_subjects"
+        )
+        await self._async_notify(with_defaults(self.entry.options)[OPT_NOTIFY_SERVICE], title, message)
 
     async def _async_publish(self, reports: list[Report]) -> None:
         """Notification d'anomalie et rapport hebdomadaire (persistants, plus service notify optionnel)."""

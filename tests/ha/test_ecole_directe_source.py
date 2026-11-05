@@ -88,3 +88,25 @@ async def test_aucune_moyenne_decouverte(hass):
     notes = add_notes(hass, ed, NOTES)
     data = await EcoleDirecteSource(hass, notes).async_fetch()
     assert data.averages == {} and len(data.notes) == 1
+
+
+# --- Matières publiées par la source (ajout automatique) -----------------------------------------------
+
+@pytest.mark.requirement("ha-integration/Ajout automatique des matières")
+async def test_matieres_des_capteurs_avec_ou_sans_moyenne(hass, mael):
+    ed, notes = mael
+    add_subject(hass, ed, "ed_mael_lopez_ed_physique_sport", "ED PHYSIQUE & SPORT", "eps", "unknown")
+    data = await EcoleDirecteSource(hass, notes).async_fetch()
+    assert "ED PHYSIQUE & SPORT" in data.subjects and "ED PHYSIQUE & SPORT" not in data.averages
+    assert len(data.all_subjects) == 8
+
+
+@pytest.mark.requirement("ha-integration/Ajout automatique des matières")
+async def test_matieres_des_notes_sans_doublon_a_la_normalisation(hass, mael):
+    ed, _ = mael
+    notes = add_notes(hass, ed, NOTES + [{**NOTES[0], "matiere": "Technologie"},
+                                         {**NOTES[0], "matiere": "TECHNOLOGIE", "commentaire": "autre"}])
+    data = await EcoleDirecteSource(hass, notes).async_fetch()
+    subjects = data.all_subjects
+    assert [s for s in subjects if s.lower() == "technologie"] == ["Technologie"]
+    assert sum(s.lower() == "francais" for s in subjects) == 1  # capteur et note : une seule fois

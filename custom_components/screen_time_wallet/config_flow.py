@@ -25,6 +25,7 @@ from .const import (
 )
 from .engine.config import ConfigError, normalize_subject
 from .options import build_config, with_defaults
+from .runtime import NoSourceError
 
 NOTIFY_SERVICE = re.compile(r"^notify\.[a-z0-9_]+$")
 
@@ -123,7 +124,11 @@ class ScreenTimeWalletOptionsFlow(OptionsFlow):
     async def async_step_matieres(self, user_input: dict | None = None) -> ConfigFlowResult:
         current = with_defaults(self.config_entry.options)
         errors = {}
-        if user_input is not None:
+        if user_input is not None and user_input.get("detect"):
+            result = await self._async_detect_subjects(errors)
+            if result is not None:
+                return result
+        elif user_input is not None:
             table = dict(current[OPT_MULTIPLIERS])
             subject = user_input["subject"].strip()
             existing = next((k for k in table if normalize_subject(k) == normalize_subject(subject)), None)
@@ -146,9 +151,28 @@ class ScreenTimeWalletOptionsFlow(OptionsFlow):
                 return self.async_create_entry(data=candidate)
         schema = vol.Schema(
             {
-                vol.Required("subject"): str,
+                vol.Optional("subject", default=""): str,  # facultatif quand « détecter » est coché
                 vol.Required("multiplier", default=1): vol.All(vol.Coerce(float), vol.Range(min=0)),
                 vol.Required("remove", default=False): bool,
+                vol.Required("detect", default=False): bool,
             }
         )
         return self.async_show_form(step_id="matieres", data_schema=schema, errors=errors)
+
+    async def _async_detect_subjects(self, errors: dict) -> ConfigFlowResult | None:
+        """Détection à la demande : le résultat est affiché par une fenêtre de fin ; None si elle a échoué (erreur)."""
+        runtime = getattr(self.config_entry, "runtime_data", None)
+        if runtime is None:
+            errors["base"] = "source_unavailable"
+            return None
+        try:
+            added = await runtime.async_detect_subjects()
+        except NoSourceError:
+            errors["base"] = "no_source"
+            return None
+        except Exception:  # noqa: BLE001 - la source est un point d'extension
+            errors["base"] = "source_unavailable"
+            return None
+        if added:
+            return self.async_abort(reason="subjects_added", description_placeholders={"subjects": ", ".join(added)})
+        return self.async_abort(reason="no_new_subjects")

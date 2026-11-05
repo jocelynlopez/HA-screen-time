@@ -78,5 +78,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> b
 
 
 async def _async_options_updated(hass: HomeAssistant, entry: WalletConfigEntry) -> None:
-    """Recharge l'entrée quand les options changent ; l'état est restauré depuis le stockage."""
+    """Recharge l'entrée quand les options changent ; l'état est restauré depuis le stockage.
+
+    Un ajout automatique de matières, déjà pris en compte par le runtime, ne recharge pas l'entrée."""
+    if entry.runtime_data.consume_own_options_update():
+        return
     await hass.config_entries.async_reload(entry.entry_id)

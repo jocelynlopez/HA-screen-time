@@ -46,6 +46,9 @@ def test_textes_utilises_par_le_code_presents(language):
     assert option_fields <= set(t["options"]["step"]["parametres"]["data"])
     assert {d.translation_key for d in sensor.DESCRIPTIONS} <= set(t["entity"]["sensor"])
     assert {"invalid_config", "invalid_notify_service", "subject_required", "unknown_subject",
-            "empty_table"} <= set(t["options"]["error"])
+            "empty_table", "no_source", "source_unavailable"} <= set(t["options"]["error"])
+    assert {"subjects_added", "no_new_subjects"} <= set(t["options"]["abort"])
+    assert "detect" in t["options"]["step"]["matieres"]["data"]
+    assert {"subjects_title", "subjects_added"} <= set(report.TEXTS[language])
     services = yaml.safe_load((COMPONENT / "services.yaml").read_text(encoding="utf-8"))
     assert set(services) == set(t["services"])

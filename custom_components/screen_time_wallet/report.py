@@ -19,7 +19,8 @@ TEXTS = {
         "week_credit_fallback": "Crédit de semaine : 0 min (crédit de repli)",
         "totals": "Capital notes : {capital} min · Temps disponible : {available} min",
         "anomaly_title": "Portefeuille de {name} : à vérifier",
-        "unknown_subjects": "Matières inconnues (sans effet) : {subjects}. Ajoutez-les avec leur multiplicateur dans les options de l'intégration, étape « Matières ».",
+        "subjects_title": "Portefeuille de {name} : matières ajoutées",
+        "subjects_added": "Matières ajoutées automatiquement avec le multiplicateur 1 : {subjects}. Réglez leur multiplicateur dans les options de l'intégration, étape « Matières » (0 pour les exclure du calcul).",
         "rejected_note": "Note rejetée : {subject} {value}/{scale} du {date} ({reason})",
         "source_title": "Portefeuille de {name} : source indisponible",
         "source_message": "Le bilan du lundi n'a pas pu être effectué : {error}. Il sera retenté automatiquement. Vérifiez l'intégration EcoleDirecte et le capteur {entity}.",
@@ -37,7 +38,8 @@ TEXTS = {
         "week_credit_fallback": "Week credit: 0 min (fallback credit)",
         "totals": "Notes capital: {capital} min · Available time: {available} min",
         "anomaly_title": "{name}'s wallet: needs attention",
-        "unknown_subjects": "Unknown subjects (no effect): {subjects}. Add them with their multiplier in the integration options, \"Subjects\" step.",
+        "subjects_title": "{name}'s wallet: subjects added",
+        "subjects_added": "Subjects added automatically with multiplier 1: {subjects}. Set their multiplier in the integration options, \"Subjects\" step (0 to exclude them from the calculation).",
         "rejected_note": "Rejected grade: {subject} {value}/{scale} of {date} ({reason})",
         "source_title": "{name}'s wallet: source unavailable",
         "source_message": "The Monday settlement could not be done: {error}. It will be retried automatically. Check the EcoleDirecte integration and the sensor {entity}.",
@@ -99,17 +101,20 @@ def render_source_down(name: str, entity: str, error: str, language: str) -> tup
 
 
 def render_anomalies(reports: list[Report], name: str, language: str) -> tuple[str, str] | None:
-    """Titre et message des matières inconnues et notes rejetées ; None s'il n'y a rien à signaler."""
+    """Titre et message des notes rejetées ; None s'il n'y a rien à signaler."""
     lang = _language(language)
     t = TEXTS[lang]
-    unknown = [s for r in reports for s in r.unknown_subjects]
     rejected = [item for r in reports for item in r.rejected]
-    if not unknown and not rejected:
+    if not rejected:
         return None
     lines = []
-    if unknown:
-        lines.append(t["unknown_subjects"].format(subjects=", ".join(dict.fromkeys(unknown))))
     for grade, reason in rejected:
         lines.append(t["rejected_note"].format(
             subject=grade.subject, value=grade.value, scale=grade.scale, date=grade.date, reason=reason))
     return t["anomaly_title"].format(name=name), "\n".join(lines)
+
+
+def render_subjects_added(name: str, subjects: list[str], language: str) -> tuple[str, str]:
+    """Titre et message de la notification des matières ajoutées automatiquement."""
+    t = TEXTS[_language(language)]
+    return t["subjects_title"].format(name=name), t["subjects_added"].format(subjects=", ".join(subjects))

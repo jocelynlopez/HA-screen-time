@@ -44,11 +44,12 @@
       },
       "matieres": {
         "title": "Subjects and multipliers",
-        "description": "Enter the subject name as EcoleDirecte writes it. An existing subject is updated, otherwise it is added.",
+        "description": "Enter the subject name as EcoleDirecte writes it. An existing subject is updated, otherwise it is added. Tick \"Detect the subjects of the source\" to add at once those the source publishes (multiplier 1); the subject name is then optional.",
         "data": {
           "subject": "Subject",
           "multiplier": "Multiplier",
-          "remove": "Remove this subject"
+          "remove": "Remove this subject",
+          "detect": "Detect the subjects of the source"
         }
       }
     },
@@ -58,7 +59,13 @@
       "subject_required": "The subject name is required.",
       "unknown_subject": "This subject is not in the table.",
       "empty_table": "The sum of the multipliers cannot be zero.",
-      "unknown_entity": "This entity does not exist."
+      "unknown_entity": "This entity does not exist.",
+      "no_source": "No notes source is chosen: choose a notes sensor in \"Calculation settings\".",
+      "source_unavailable": "The notes source is unavailable, try again later."
+    },
+    "abort": {
+      "subjects_added": "Subjects added with multiplier 1: {subjects}. They count from the next settlement.",
+      "no_new_subjects": "No new subject: all those of the source are already in the table."
     }
   },
   "entity": {

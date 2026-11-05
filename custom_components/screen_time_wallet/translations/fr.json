@@ -44,11 +44,12 @@
       },
       "matieres": {
         "title": "Matières et multiplicateurs",
-        "description": "Saisissez le nom de la matière tel qu'EcoleDirecte l'écrit. Une matière existante est modifiée, sinon elle est ajoutée.",
+        "description": "Saisissez le nom de la matière tel qu'EcoleDirecte l'écrit. Une matière existante est modifiée, sinon elle est ajoutée. Cochez « Détecter les matières de la source » pour ajouter d'un coup celles que la source publie (multiplicateur 1) ; le nom de la matière est alors facultatif.",
         "data": {
           "subject": "Matière",
           "multiplier": "Multiplicateur",
-          "remove": "Supprimer cette matière"
+          "remove": "Supprimer cette matière",
+          "detect": "Détecter les matières de la source"
         }
       }
     },
@@ -58,7 +59,13 @@
       "subject_required": "Le nom de la matière est obligatoire.",
       "unknown_subject": "Cette matière n'est pas dans la table.",
       "empty_table": "La somme des multiplicateurs ne peut pas être nulle.",
-      "unknown_entity": "Cette entité n'existe pas."
+      "unknown_entity": "Cette entité n'existe pas.",
+      "no_source": "Aucune source de notes n'est choisie : choisissez un capteur de notes dans « Paramètres de calcul ».",
+      "source_unavailable": "La source de notes est indisponible, réessayez plus tard."
+    },
+    "abort": {
+      "subjects_added": "Matières ajoutées avec le multiplicateur 1 : {subjects}. Elles comptent à partir du prochain bilan.",
+      "no_new_subjects": "Aucune nouvelle matière : toutes celles de la source sont déjà dans la table."
     }
   },
   "entity": {
