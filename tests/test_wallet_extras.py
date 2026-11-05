@@ -282,11 +282,77 @@ def test_credit_de_repli_dans_le_compte_rendu():
 def test_notes_visibles_memorisees_a_l_activation():
     from real_notes import RAW, make
 
-    visible = [make(r) for r in RAW]
+    visible = [make(r) for r in RAW[2:]]  # les notes datées d'avant le lundi 2/11
     wallet = Wallet.create(MONDAY, {})  # sans source
     wallet.activate_source(datetime(2026, 11, 4), SEVEN, visible)
     reports = wallet.settle(NEXT_MONDAY, SEVEN, visible)
-    assert len(visible) == 18 and reports[0].counted == []
+    assert len(visible) == 16 and reports[0].counted == []
+
+
+@pytest.mark.requirement("screen-time-wallet/Activation d'une source")
+def test_notes_de_la_semaine_en_cours_conservees_a_l_activation():
+    from real_notes import RAW, make
+
+    visible = [make(r) for r in RAW]  # dont français (2/11) et arts plastiques (3/11)
+    wallet = Wallet.create(MONDAY, {})
+    wallet.activate_source(datetime(2026, 11, 5), SEVEN, visible)
+    reports = wallet.settle(NEXT_MONDAY, SEVEN, visible)
+    assert sorted(g.subject for g in reports[0].counted) == ["ARTS PLASTIQUES", "FRANCAIS"]
+
+
+@pytest.mark.requirement("screen-time-wallet/Activation d'une source")
+def test_note_d_une_semaine_precedente_memorisee_a_l_activation():
+    sunday = Grade("2026-11-01", "FRANCAIS", "dimanche", 12, 20, 1)
+    wallet = Wallet.create(MONDAY, {})
+    wallet.activate_source(datetime(2026, 11, 5), SEVEN, [sunday])
+    assert wallet.settle(NEXT_MONDAY, SEVEN, [sunday])[0].counted == []
+
+
+# --- Recomptage des notes de la semaine ---------------------------------------------------------
+
+def activated_with_real_notes():
+    from real_notes import RAW, make
+
+    visible = [make(r) for r in RAW]
+    wallet = Wallet.create(MONDAY, {})
+    wallet.seen_keys |= {g.key for g in visible}  # portefeuille activé avec l'ancienne règle : tout est mémorisé
+    return wallet, visible
+
+
+@pytest.mark.requirement("screen-time-wallet/Recomptage des notes de la semaine")
+def test_recomptage_rend_les_notes_de_la_semaine_a_compter():
+    wallet, visible = activated_with_real_notes()
+    assert wallet.recount_week(datetime(2026, 11, 5), visible) == 2
+    reports = wallet.settle(NEXT_MONDAY, SEVEN, visible)
+    assert sorted(g.subject for g in reports[0].counted) == ["ARTS PLASTIQUES", "FRANCAIS"]
+
+
+@pytest.mark.requirement("screen-time-wallet/Recomptage des notes de la semaine")
+def test_recomptage_laisse_les_notes_precedentes_vues():
+    wallet, visible = activated_with_real_notes()
+    wallet.recount_week(datetime(2026, 11, 5), visible)
+    assert {g.key for g in visible[2:]} <= wallet.seen_keys
+
+
+@pytest.mark.requirement("screen-time-wallet/Recomptage des notes de la semaine")
+def test_recomptage_sans_note_concernee():
+    from real_notes import RAW, make
+
+    old = [make(r) for r in RAW[2:]]
+    wallet = Wallet.create(MONDAY, {})
+    wallet.seen_keys |= {g.key for g in old}
+    before = wallet.to_dict()
+    assert wallet.recount_week(datetime(2026, 11, 5), old) == 0
+    assert wallet.to_dict() == before
+
+
+@pytest.mark.requirement("screen-time-wallet/Recomptage des notes de la semaine")
+def test_recomptage_ne_touche_ni_credits_ni_journal():
+    wallet, visible = activated_with_real_notes()
+    wallet.consume(10, datetime(2026, 11, 4), "jeu")
+    before = (wallet.weekly_credit, wallet.notes_capital, list(wallet.movements))
+    wallet.recount_week(datetime(2026, 11, 5), visible)
+    assert (wallet.weekly_credit, wallet.notes_capital, wallet.movements) == before
 
 
 @pytest.mark.requirement("screen-time-wallet/Activation d'une source")

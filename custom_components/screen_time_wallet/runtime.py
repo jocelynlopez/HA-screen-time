@@ -8,7 +8,7 @@ from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import (
     async_call_later,
@@ -140,6 +140,22 @@ class WalletRuntime:
             self.wallet.consume(minutes, local_now(), reason)
             await self.async_save()
         self.async_notify_entities()
+
+    async def async_recount_week(self) -> int:
+        """Rend à compter au prochain bilan les notes de la semaine en cours ; renvoie leur nombre.
+
+        Si la source est inaccessible, l'appel est refusé (ServiceValidationError) et rien n'est modifié."""
+        try:
+            data = await self.source.async_fetch()
+        except Exception as error:  # noqa: BLE001 - la source est un point d'extension
+            raise ServiceValidationError(f"Source des notes inaccessible : {error}") from error
+        async with self.lock:
+            count = self.wallet.recount_week(local_now(), data.notes)
+            if count:
+                await self.async_save()
+        if count:
+            self.async_notify_entities()
+        return count
 
     async def async_adjust(self, minutes: int, reason: str = "") -> None:
         async with self.lock:

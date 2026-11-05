@@ -67,9 +67,20 @@ async def test_premiere_selection(hass, hass_storage, freezer, entry, ed):
     assert runtime.wallet.weekly_credit == 228 and runtime.wallet.notes_capital == 0
     assert len(initialisations(runtime)) == 1
     assert stored(hass_storage, entry)["source_entity"] == ed[1]
-    # les 18 notes visibles n'ont aucun effet au bilan suivant
+    # les 16 notes d'avant la semaine n'ont aucun effet au bilan suivant ; les 2 de la semaine en cours comptent
     await advance(hass, freezer, days=5, hours=14)  # lundi 9/11 00h00 passé
-    assert [m.capital_change for m in runtime.wallet.movements if m.kind == "bilan"] == [342]
+    assert [m.capital_change for m in runtime.wallet.movements if m.kind == "bilan"] == [-374]
+
+
+@pytest.mark.requirement("ha-integration/Activation de la source")
+async def test_notes_de_la_semaine_a_l_activation(hass, freezer, entry, ed):
+    runtime = await start(hass, freezer, entry)
+    await save_params(hass, entry, notes_entity=ed[1])
+    runtime = entry.runtime_data  # l'entrée est rechargée par le changement d'options
+    runtime.async_schedule_forecast()
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert "FRANCAIS 7/20" in runtime.forecast_text and "ARTS PLASTIQUES 18/20" in runtime.forecast_text
+    assert "HISTOIRE" not in runtime.forecast_text  # les notes d'avant la semaine sont mémorisées sans effet
 
 
 @pytest.mark.requirement("ha-integration/Activation de la source")
@@ -158,7 +169,8 @@ async def test_source_ecole_directe_alimente_le_bilan(hass, freezer, entry, ed):
         "date": "2026-11-05", "matiere": "MATHEMATIQUES", "commentaire": "Contrôle", "note": "20",
         "sur": "20", "coefficient": "1", "non_significatif": False}]})
     await advance(hass, freezer, days=5, hours=14)
-    assert [m.capital_change for m in runtime.wallet.movements if m.kind == "bilan"] == [720]  # un seul 20/20
+    # les deux notes de la semaine en cours (français 7/20, arts plastiques 18/20) comptent avec le 20/20 de maths
+    assert [m.capital_change for m in runtime.wallet.movements if m.kind == "bilan"] == [151]
 
 
 # --- Source indisponible signalée ------------------------------------------------------------------------

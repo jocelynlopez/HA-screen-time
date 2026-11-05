@@ -83,6 +83,7 @@ async def async_setup_entry(
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service("consume", CONSUME_SCHEMA, "async_consume")
     platform.async_register_entity_service("adjust", ADJUST_SCHEMA, "async_adjust")
+    platform.async_register_entity_service("recount_week", {}, "async_recount_week")
 
 
 class WalletSensor(SensorEntity):
@@ -121,6 +122,9 @@ class WalletSensor(SensorEntity):
             await self.runtime.async_consume(minutes, reason)
         except InvalidConsumptionError as error:
             raise ServiceValidationError(str(error)) from error
+
+    async def async_recount_week(self) -> None:
+        await self.runtime.async_recount_week()
 
     async def async_adjust(self, minutes: int, reason: str = "") -> None:
         try:

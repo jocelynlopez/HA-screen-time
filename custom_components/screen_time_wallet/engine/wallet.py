@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from fractions import Fraction
 
 from .config import Config
@@ -29,6 +29,19 @@ class WalletStateError(ValueError):
 def monday_midnight(moment: datetime) -> datetime:
     """Lundi 00h00 de la semaine contenant `moment` (heure locale naïve)."""
     return datetime.combine(moment.date() - timedelta(days=moment.weekday()), time.min)
+
+
+def is_current_week(grade: Grade, now: datetime) -> bool:
+    """Vrai si la note est datée du lundi de la semaine de `now` ou après (une date illisible compte comme ancienne)."""
+    day = grade.date
+    if isinstance(day, datetime):
+        day = day.date()
+    elif not isinstance(day, date):
+        try:
+            day = date.fromisoformat(str(day).strip()[:10])
+        except ValueError:
+            return False
+    return day >= monday_midnight(now).date()
 
 
 @dataclass
@@ -186,12 +199,21 @@ class Wallet:
         self._record(Movement("ajustement", now, 0, minutes, reason))
 
     def activate_source(self, now: datetime, averages: Mapping[str, object], notes: Iterable[Grade]) -> None:
-        """Active une source : notes visibles mémorisées sans effet, crédit hebdomadaire = crédit initial."""
+        """Active une source : notes d'avant la semaine en cours mémorisées sans effet (celles de la semaine restent à
+        compter), crédit hebdomadaire = crédit initial."""
         initial = initial_credit(averages, self.config)
         change = initial - self.weekly_credit
         self.weekly_credit = initial
-        self.seen_keys |= {g.key for g in notes}
+        self.seen_keys |= {g.key for g in notes if not is_current_week(g, now)}
         self._record(Movement("initialisation", now, change, 0, "", {"initial_credit": initial}))
+
+    def recount_week(self, now: datetime, notes: Iterable[Grade]) -> int:
+        """Rend à compter au prochain bilan les notes de la semaine en cours ; renvoie leur nombre.
+
+        Les crédits, le capital et le journal ne changent pas."""
+        keys = {g.key for g in notes if is_current_week(g, now)} & self.seen_keys
+        self.seen_keys -= keys
+        return len(keys)
 
     def to_dict(self) -> dict:
         """État compatible JSON (la configuration n'en fait pas partie : ce sont les options)."""

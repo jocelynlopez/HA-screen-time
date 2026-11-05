@@ -117,6 +117,10 @@
           "description": "Raison affichée dans le journal."
         }
       }
+    },
+    "recount_week": {
+      "name": "Recompter les notes de la semaine",
+      "description": "Rend à compter au prochain bilan les notes de la semaine en cours déjà mémorisées sans effet (après une activation en cours de semaine). À ne pas utiliser après un bilan rattrapé en retard."
     }
   }
 }

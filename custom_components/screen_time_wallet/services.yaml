@@ -30,3 +30,8 @@ adjust:
     reason:
       selector:
         text:
+recount_week:
+  target:
+    entity:
+      integration: screen_time_wallet
+      domain: sensor

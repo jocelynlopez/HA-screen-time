@@ -117,6 +117,10 @@
           "description": "Reason shown in the log."
         }
       }
+    },
+    "recount_week": {
+      "name": "Recount this week's grades",
+      "description": "Makes the grades of the current week that were stored without effect count again at the next settlement (after an activation in the middle of the week). Do not use it after a late settlement."
     }
   }
 }

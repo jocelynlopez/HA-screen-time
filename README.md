@@ -82,8 +82,9 @@ The integration reads the entities of the Home Assistant
 3. The **averages per subject** are discovered automatically: they are the sensors of the same integration that have
    the `Nom` and `Code` attributes, their state being the average.
 
-When the sensor is first chosen (or changed), the grades already visible are **remembered without any effect** and the
-weekly credit is computed from the current averages. Only grades entered afterwards count.
+When the sensor is first chosen (or changed), the grades dated **before the current week** are **remembered without any
+effect** and the weekly credit is computed from the current averages. Grades dated since this Monday are kept and count
+at the next settlement, as well as the ones entered afterwards.
 
 Good to know:
 
@@ -186,6 +187,10 @@ calling the same actions.
 - `screen_time_wallet.consume`: consumes minutes (`minutes` > 0, optional `reason`), weekly credit first.
 - `screen_time_wallet.adjust`: adjusts the grades capital (`minutes` positive or negative, non-zero, optional
   `reason`).
+- `screen_time_wallet.recount_week`: makes the grades of the current week that were remembered without effect count at
+  the next settlement (no parameter; credits and journal are untouched). Use it **once**, to fix a source that was
+  activated in the middle of the week by an older version, if the forecast misses this week's grades. Do not use it
+  after a settlement that was caught up late: grades already counted would be counted again.
 
 They target a wallet sensor. The entity id depends on Home Assistant's language (in French
 `sensor.mael_temps_disponible`, in English `sensor.mael_available_time`), for example:
@@ -297,8 +302,9 @@ L'intégration lit les entités de l'intégration Home Assistant
 3. Les **moyennes par matière** sont découvertes automatiquement : ce sont les capteurs de la même intégration qui ont
    les attributs `Nom` et `Code`, leur état étant la moyenne.
 
-Au premier choix du capteur (ou à son changement), les notes déjà visibles sont **mémorisées sans effet** et le crédit
-hebdomadaire est calculé sur les moyennes actuelles. Seules les notes saisies ensuite comptent.
+Au premier choix du capteur (ou à son changement), les notes datées d'**avant la semaine en cours** sont **mémorisées
+sans effet** et le crédit hebdomadaire est calculé sur les moyennes actuelles. Les notes datées depuis ce lundi sont
+conservées et comptent au prochain bilan, comme celles saisies ensuite.
 
 À savoir :
 
@@ -404,6 +410,10 @@ main avec les champs `minutes` et `reason` qui appelle les mêmes actions.
 
 - `screen_time_wallet.consume` : consomme des minutes (`minutes` > 0, `reason` optionnel), crédit hebdomadaire d'abord.
 - `screen_time_wallet.adjust` : ajuste le capital notes (`minutes` positif ou négatif, non nul, `reason` optionnel).
+- `screen_time_wallet.recount_week` : rend à compter au prochain bilan les notes de la semaine en cours mémorisées sans
+  effet (aucun paramètre ; crédits et journal inchangés). À utiliser **une fois**, pour corriger une source activée en
+  cours de semaine par une version plus ancienne, si la prévision ne montre pas les notes de la semaine. Ne pas
+  l'utiliser après un bilan rattrapé en retard : des notes déjà comptées le seraient une seconde fois.
 
 Ils ciblent un capteur du portefeuille. L'identifiant dépend de la langue de Home Assistant (en français
 `sensor.mael_temps_disponible`, en anglais `sensor.mael_available_time`), par exemple :

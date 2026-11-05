@@ -176,3 +176,67 @@ async def test_recalcul_sans_modifier_l_etat(hass, freezer):
     runtime.async_schedule_forecast()
     await settled(hass)
     assert runtime.wallet.to_dict() == before and runtime.wallet.last_settlement == datetime(2026, 11, 2)
+
+
+# --- Action de recomptage des notes -----------------------------------------------------------------------------
+
+async def activated_with_week_notes(hass, freezer):
+    """Portefeuille activé avec l'ancienne règle : les notes de la semaine (français, arts) sont mémorisées sans effet."""
+    from real_notes import RAW, make
+
+    visible = [make(r) for r in RAW]
+    source = FakeSource(SEVEN, visible)
+    entry, runtime = await running(hass, freezer, source=source)
+    runtime.wallet.seen_keys |= {g.key for g in visible}
+    runtime.async_schedule_forecast()
+    await settled(hass)
+    return entry, runtime, source
+
+
+async def recount(hass, entry):
+    from custom_components.screen_time_wallet.const import DOMAIN as D
+    from test_entities import entity_id
+
+    await hass.services.async_call(
+        D, "recount_week", {"entity_id": entity_id(hass, entry, "available")}, blocking=True
+    )
+    await settled(hass)
+
+
+@pytest.mark.requirement("ha-integration/Action de recomptage des notes")
+async def test_recomptage_affiche_les_notes_dans_la_prevision(hass, freezer):
+    entry, runtime, _ = await activated_with_week_notes(hass, freezer)
+    assert "FRANCAIS 7/20" not in runtime.forecast_text
+    await recount(hass, entry)
+    forecast = state(hass, entry, "report").attributes["forecast"]
+    assert "FRANCAIS 7/20 : -" in forecast and "ARTS PLASTIQUES 18/20 : +" in forecast
+    assert "HISTOIRE" not in forecast
+
+
+@pytest.mark.requirement("ha-integration/Action de recomptage des notes")
+async def test_recomptage_source_inaccessible(hass, freezer, hass_storage):
+    from homeassistant.exceptions import ServiceValidationError
+
+    entry, runtime, source = await activated_with_week_notes(hass, freezer)
+    before = runtime.wallet.to_dict()
+    source.error = SourceUnavailableError("hors service")
+    with pytest.raises(ServiceValidationError):
+        await recount(hass, entry)
+    assert runtime.wallet.to_dict() == before
+
+
+@pytest.mark.requirement("ha-integration/Action de recomptage des notes")
+async def test_recomptage_sans_note_concernee(hass, freezer, hass_storage):
+    entry, runtime = await running(hass, freezer, source=FakeSource(SEVEN, []))
+    saved = dict(hass_storage[f"{DOMAIN}.{entry.entry_id}"]["data"])
+    await recount(hass, entry)
+    assert hass_storage[f"{DOMAIN}.{entry.entry_id}"]["data"] == saved
+
+
+@pytest.mark.requirement("ha-integration/Action de recomptage des notes")
+async def test_recomptage_ne_modifie_pas_credits_ni_journal(hass, freezer):
+    entry, runtime, _ = await activated_with_week_notes(hass, freezer)
+    await runtime.async_consume(20, "jeu")
+    before = (runtime.wallet.weekly_credit, runtime.wallet.notes_capital, list(runtime.wallet.movements))
+    await recount(hass, entry)
+    assert (runtime.wallet.weekly_credit, runtime.wallet.notes_capital, runtime.wallet.movements) == before

@@ -67,10 +67,12 @@ async def test_note_d_une_matiere_ajoutee_compte_au_bilan(hass, freezer, ed):
     entry, runtime = await started(hass, freezer, ed)
     hass.states.async_set(ed[1], "16", {"notes": [NOTE, {**NOTE, "matiere": "LATIN", "note": "20",
                                                          "commentaire": "version"}]})
-    await tick(hass, freezer, MONDAY_9)
+    hass.config.language = "fr"
+    with patch(CREATE) as create:
+        await tick(hass, freezer, MONDAY_9)
     assert table(entry)["LATIN"] == 1
-    bilan = runtime.wallet.movements[-1]
-    assert bilan.kind == "bilan" and bilan.capital_change > 0  # la note de latin à 20/20 compte
+    (_, message), = calls_by_kind(create)["report"]
+    assert "LATIN 20/20 : +" in message  # la note de latin à 20/20 compte
 
 
 @pytest.mark.requirement("ha-integration/Ajout automatique des matières")
