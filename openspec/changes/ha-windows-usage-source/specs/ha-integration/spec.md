@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: Capteurs de temps d'écran
-Le système SHALL permettre de choisir dans les options un ou plusieurs capteurs de temps d'écran, dont l'état est le nombre de minutes utilisées dans la journée. Une entité inexistante SHALL être refusée. L'ajout d'un capteur SHALL prendre son relevé actuel pour référence, et le retrait SHALL oublier sa référence. Par défaut, aucun capteur n'est choisi.
+Le système SHALL permettre de choisir dans les options un ou plusieurs capteurs de temps d'écran, dont le relevé est le temps utilisé dans la journée : l'attribut `total_seconds` divisé par 60 quand il est numérique, sinon l'état en minutes. L'attribut `date`, s'il existe, est le jour du relevé. Une entité inexistante SHALL être refusée. L'ajout d'un capteur SHALL prendre son relevé actuel pour référence, et le retrait SHALL oublier sa référence. Par défaut, aucun capteur n'est choisi.
 
 #### Scenario: Choix d'un capteur
 - **WHEN** le capteur `sensor.pc_mael_screen_time` est choisi dans les options
@@ -29,6 +29,11 @@ Le système SHALL consommer automatiquement, à chaque nouveau relevé d'un capt
 - **WHEN** le capteur passe à 25 minutes
 - **THEN** le crédit hebdomadaire vaut 213, les capteurs du portefeuille sont mis à jour et le journal mentionne le capteur
 
+#### Scenario: Relevé en secondes
+- **GIVEN** un capteur dont l'attribut `total_seconds` vaut 660 et dont l'état vaut 10
+- **WHEN** le relevé est lu
+- **THEN** il vaut 11 minutes
+
 #### Scenario: Deux capteurs
 - **GIVEN** deux capteurs de temps d'écran
 - **WHEN** le premier augmente de 15 minutes et le second de 20
@@ -43,13 +48,18 @@ Le système SHALL consommer automatiquement, à chaque nouveau relevé d'un capt
 - **WHEN** le capteur passe à 12 minutes
 - **THEN** 12 minutes sont consommées
 
+#### Scenario: Changement de jour
+- **GIVEN** une référence de 190 minutes datée du 2026-11-04
+- **WHEN** le capteur passe à 8 minutes, daté du 2026-11-05
+- **THEN** 8 minutes sont consommées
+
 #### Scenario: Usage supérieur au crédit
 - **GIVEN** un crédit hebdomadaire de 10 minutes et un capital notes de 0
 - **WHEN** 25 minutes sont consommées automatiquement
 - **THEN** le crédit hebdomadaire vaut 0 et le capital notes −15
 
 ### Requirement: Relevés de référence conservés
-Le système SHALL enregistrer les relevés de référence avec l'état du portefeuille et les restaurer au démarrage, puis relever chaque capteur au démarrage pour consommer la différence survenue pendant l'arrêt. Un rechargement dû à une modification d'options SHALL ne pas refaire les références des capteurs inchangés.
+Le système SHALL enregistrer les relevés de référence, valeur et date, avec l'état du portefeuille et les restaurer au démarrage, puis relever chaque capteur au démarrage pour consommer la différence survenue pendant l'arrêt. Un rechargement dû à une modification d'options SHALL ne pas refaire les références des capteurs inchangés.
 
 #### Scenario: Redémarrage
 - **GIVEN** une référence enregistrée de 25 minutes
@@ -60,6 +70,11 @@ Le système SHALL enregistrer les relevés de référence avec l'état du portef
 - **GIVEN** une référence enregistrée de 190 minutes
 - **WHEN** Home Assistant redémarre et que le capteur affiche 12 minutes
 - **THEN** 12 minutes sont consommées
+
+#### Scenario: Changement de jour pendant l'arrêt
+- **GIVEN** une référence enregistrée de 190 minutes datée du 2026-11-04
+- **WHEN** Home Assistant redémarre et que le capteur affiche 200 minutes, daté du 2026-11-05
+- **THEN** 200 minutes sont consommées
 
 #### Scenario: Rechargement par les options
 - **WHEN** une autre option est modifiée alors qu'un capteur de temps d'écran est suivi

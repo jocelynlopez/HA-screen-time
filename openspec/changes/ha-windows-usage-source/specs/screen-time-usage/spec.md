@@ -25,7 +25,7 @@ Le système SHALL calculer la consommation comme la partie entière de la diffé
 - **THEN** le premier relevé ne consomme rien et laisse la référence à 10, puis le second consomme 1 minute et porte la référence à 11
 
 ### Requirement: Premier relevé
-Le système SHALL prendre le premier relevé d'un compteur comme référence, sans rien consommer.
+Le système SHALL prendre le premier relevé d'un compteur comme référence, avec sa date quand elle existe, sans rien consommer.
 
 #### Scenario: Premier relevé en cours de journée
 - **WHEN** le premier relevé est de 87 minutes
@@ -37,12 +37,22 @@ Le système SHALL prendre le premier relevé d'un compteur comme référence, sa
 - **THEN** 5 minutes sont consommées
 
 ### Requirement: Remise à zéro du compteur
-Le système SHALL traiter un relevé inférieur à la référence comme une remise à zéro du compteur : la référence repart de 0 et le relevé actuel est la consommation depuis la remise à zéro, sans supposer l'heure à laquelle elle a lieu.
+Le système SHALL traiter comme une remise à zéro du compteur un relevé daté d'un autre jour que la référence ou inférieur à la référence : la référence repart de 0 et le relevé actuel est la consommation depuis la remise à zéro, sans supposer l'heure de celle-ci.
 
-#### Scenario: Nouvelle journée
-- **GIVEN** une référence de 190 minutes
-- **WHEN** le relevé actuel est de 12 minutes
+#### Scenario: Changement de jour sans baisse
+- **GIVEN** une référence de 190 minutes datée du 2026-11-04
+- **WHEN** le relevé actuel est de 200 minutes, daté du 2026-11-05
+- **THEN** 200 minutes sont consommées et la référence devient 200
+
+#### Scenario: Baisse sans date
+- **GIVEN** une référence de 190 minutes, sans date
+- **WHEN** le relevé actuel est de 12 minutes, sans date
 - **THEN** 12 minutes sont consommées et la référence devient 12
+
+#### Scenario: Même jour
+- **GIVEN** une référence de 12 minutes datée du 2026-11-04
+- **WHEN** le relevé actuel est de 30 minutes, daté du 2026-11-04
+- **THEN** 18 minutes sont consommées
 
 #### Scenario: Remise à zéro exacte
 - **GIVEN** une référence de 190 minutes

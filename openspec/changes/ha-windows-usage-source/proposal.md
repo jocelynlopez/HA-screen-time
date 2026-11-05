@@ -6,11 +6,11 @@ Le portefeuille se recharge chaque lundi, mais rien ne le débite quand l'enfant
 
 ## What Changes
 
-- **Capteurs de temps d'écran** : une option permet de choisir un ou plusieurs capteurs (par exemple `sensor.{appareil}_screen_time`). Leur état est le nombre de minutes utilisées *aujourd'hui*.
+- **Capteurs de temps d'écran** : une option permet de choisir un ou plusieurs capteurs (par exemple `sensor.{appareil}_screen_time`). Leur relevé est le temps utilisé *aujourd'hui* : l'attribut `total_seconds` en minutes, avec l'état en repli.
 - **Consommation automatique** : à chaque nouveau relevé, la différence avec le relevé précédent est consommée (crédit hebdomadaire d'abord, puis capital notes). Plusieurs capteurs s'additionnent.
-- **Compteur journalier robuste** : le compteur repart de zéro à un moment que le README de l'intégration ne précise pas. Une baisse du compteur est donc traitée comme une remise à zéro (le nouveau relevé est alors la consommation depuis la remise à zéro), sans supposer d'heure.
+- **Compteur journalier robuste** : le compteur repart de zéro à minuit (observé), en même temps que l'attribut `date` change. Un changement de jour vaut remise à zéro, même si la valeur n'a pas baissé (Home Assistant arrêté la nuit) ; sans attribut `date`, une baisse du compteur vaut remise à zéro. Le nouveau relevé est alors la consommation depuis la remise à zéro.
 - **Premier relevé sans débit** : quand un capteur est choisi, son relevé actuel devient la référence ; l'usage déjà écoulé n'est pas facturé.
-- **Relevés conservés** : les relevés de référence sont enregistrés avec l'état, pour qu'un redémarrage de Home Assistant ne perde ni ne double aucune minute.
+- **Relevés conservés** : les relevés de référence, valeur et date, sont enregistrés avec l'état, pour qu'un redémarrage de Home Assistant ne perde ni ne double aucune minute.
 - **Journal lisible** : les consommations automatiques d'un même capteur dans la même journée sont regroupées en un seul mouvement.
 
 ## Capabilities
