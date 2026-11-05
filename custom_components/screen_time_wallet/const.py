@@ -15,6 +15,8 @@ OPT_WEEKLY_REPORT = "weekly_report"
 OPT_NOTIFY_SERVICE = "notify_service"
 OPT_NOTES_ENTITY = "notes_entity"
 OPT_USAGE_ENTITIES = "usage_entities"
+OPT_LOCK_SWITCHES = "lock_switches"  # interrupteurs bloqués à l'état ON
+OPT_ALLOW_SWITCHES = "allow_switches"  # interrupteurs bloqués à l'état OFF
 OPT_MULTIPLIERS = "multipliers"
 
 RETRY_DELAY_MINUTES = 5

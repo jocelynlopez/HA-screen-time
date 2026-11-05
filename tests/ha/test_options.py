@@ -107,7 +107,7 @@ async def test_etat_conserve_apres_modification(hass, loaded):
 async def test_valeurs_par_defaut_affichees(hass, loaded):
     form = await open_step(hass, loaded, "parametres")
     schema = {str(key): key for key in form["data_schema"].schema}
-    defaults = {name: key.default() for name, key in schema.items() if name not in ("notes_entity", "usage_entities")}
+    defaults = {name: key.default() for name, key in schema.items() if name not in ("notes_entity", "usage_entities", "lock_switches", "allow_switches")}
     assert defaults == PARAMS
     assert schema["notes_entity"].description["suggested_value"] is None  # aucun capteur de notes
     assert DEFAULT_OPTIONS["weekly_report"] is True and DEFAULT_OPTIONS["notify_service"] == ""
@@ -213,3 +213,38 @@ async def test_champ_vide_signifie_aucun_capteur(hass, loaded):
     await save_params(hass, loaded, usage_entities=["sensor.pc_mael_screen_time"])
     await save_params(hass, loaded)  # champ vidé : absent des données reçues
     assert loaded.options["usage_entities"] == [] and loaded.runtime_data.usage_entities == []
+
+
+# --- Interrupteurs de blocage (options) ----------------------------------------------------------------------
+
+@pytest.mark.requirement("ha-integration/Interrupteurs de blocage")
+async def test_choix_d_un_interrupteur_de_verrouillage(hass, loaded):
+    hass.states.async_set("switch.mael_lock", "off")
+    result = await save_params(hass, loaded, lock_switches=["switch.mael_lock"])
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert loaded.options["lock_switches"] == ["switch.mael_lock"] and loaded.options["allow_switches"] == []
+
+
+@pytest.mark.requirement("ha-integration/Interrupteurs de blocage")
+async def test_choix_d_un_interrupteur_d_autorisation(hass, loaded):
+    hass.states.async_set("switch.mael_internet", "on")
+    result = await save_params(hass, loaded, allow_switches=["switch.mael_internet"])
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert loaded.options["allow_switches"] == ["switch.mael_internet"] and loaded.options["lock_switches"] == []
+
+
+@pytest.mark.requirement("ha-integration/Interrupteurs de blocage")
+@pytest.mark.parametrize("field", ["lock_switches", "allow_switches"])
+async def test_interrupteur_inexistant_refuse(hass, loaded, field):
+    result = await save_params(hass, loaded, **{field: ["switch.n_existe_pas"]})
+    assert result["type"] is FlowResultType.FORM and result["errors"] == {field: "unknown_entity"}
+    assert loaded.options.get(field, []) == []
+
+
+@pytest.mark.requirement("ha-integration/Interrupteurs de blocage")
+async def test_aucun_interrupteur_par_defaut_et_champ_vide(hass, loaded):
+    assert DEFAULT_OPTIONS["lock_switches"] == [] and DEFAULT_OPTIONS["allow_switches"] == []
+    hass.states.async_set("switch.mael_lock", "off")
+    await save_params(hass, loaded, lock_switches=["switch.mael_lock"])
+    await save_params(hass, loaded)  # champs vidés : absents des données reçues
+    assert loaded.options["lock_switches"] == [] and loaded.options["allow_switches"] == []

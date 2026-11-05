@@ -49,7 +49,9 @@ def test_textes_utilises_par_le_code_presents(language):
             "empty_table", "no_source", "source_unavailable"} <= set(t["options"]["error"])
     assert {"subjects_added", "no_new_subjects"} <= set(t["options"]["abort"])
     assert "detect" in t["options"]["step"]["matieres"]["data"]
-    assert {"subjects_title", "subjects_added", "table_header"} <= set(report.TEXTS[language])
+    assert {"subjects_title", "subjects_added", "table_header",
+            "blocking_title", "blocking_failed"} <= set(report.TEXTS[language])
+    assert {"lock_switches", "allow_switches"} <= set(t["options"]["step"]["parametres"]["data"])
     for text in (t["options"]["step"]["matieres"]["description"], t["options"]["abort"]["subjects_added"],
                  t["options"]["abort"]["no_new_subjects"]):
         assert "{table}" in text

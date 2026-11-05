@@ -39,7 +39,9 @@
           "weekly_report": "Publier un rapport chaque lundi",
           "notify_service": "Service de notification (ex. notify.mobile_app_telephone)",
           "notes_entity": "Capteur de notes EcoleDirecte (optionnel)",
-          "usage_entities": "Capteurs de temps d'écran (optionnel)"
+          "usage_entities": "Capteurs de temps d'écran (optionnel)",
+          "lock_switches": "Interrupteurs de verrouillage : bloqué à l'état ON, ex. Account Lock de Family Safety (optionnel)",
+          "allow_switches": "Interrupteurs d'autorisation : bloqué à l'état OFF (optionnel)"
         }
       },
       "matieres": {

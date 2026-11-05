@@ -39,7 +39,9 @@
           "weekly_report": "Publish a report every Monday",
           "notify_service": "Notification service (e.g. notify.mobile_app_phone)",
           "notes_entity": "EcoleDirecte notes sensor (optional)",
-          "usage_entities": "Screen time sensors (optional)"
+          "usage_entities": "Screen time sensors (optional)",
+          "lock_switches": "Lock switches: blocked when ON, e.g. Family Safety Account Lock (optional)",
+          "allow_switches": "Allow switches: blocked when OFF (optional)"
         }
       },
       "matieres": {

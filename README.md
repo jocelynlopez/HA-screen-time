@@ -34,7 +34,7 @@ entry per child).
 
 - **Calculation settings**: maximum time per week (hours, for 20/20 everywhere), share of the week's grades (%), pivot
   grade, minimum weight, minimum number of subjects, fallback credit, non-significant grades, weekly report,
-  notification service, EcoleDirecte notes sensor, screen time sensors.
+  notification service, EcoleDirecte notes sensor, screen time sensors, lock and allow switches.
 - **Subjects and multipliers**: add, edit or remove a subject (name as written by EcoleDirecte), or tick **Detect the
   subjects of the source** to add at once those the source publishes. The window shows the **current table** (one line
   per subject with its multiplier, in alphabetical order) above the form.
@@ -109,6 +109,28 @@ Limits: the available time follows the sensor's pace (5 minutes by default); usa
 previous day and midnight is not counted; an erroneous numeric reading (an isolated 0) would be counted as new usage
 when the real value returns: the journal shows it and the `screen_time_wallet.adjust` service corrects it.
 
+## Blocking when the time runs out
+
+The wallet can switch devices off by itself when the available time is used up. In the options, *Calculation
+settings*, choose switches (domain `switch`) in one or both lists; leave them empty to lock by hand.
+
+- **Lock switches**: blocked when **ON**. This is the case of the Family Safety **Account Lock**
+  (`switch.<first name>_lock`): ON sets the allowed screen time to 0 on every platform, OFF restores the saved quotas.
+- **Allow switches**: blocked when **OFF**.
+
+When the available time is **0 or less**, the wallet puts every chosen switch in its blocked state; when it is positive
+again (Monday top-up, new grades, an adjustment), it puts them back in their free state.
+
+- The state is enforced at **each reading** of a screen time sensor, at startup and after a settlement, a consumption or
+  an adjustment: switching a lock back by hand while the time is used up is undone at the next reading. To give time,
+  use `screen_time_wallet.adjust`.
+- Nothing changes while a Monday settlement is due (source unavailable), so a child is never locked on a stale credit.
+- A switch that is `unavailable` or `unknown` is skipped and tried again. If a switch call fails, a persistent
+  notification names the switch; it is retried at the next reading and the notification disappears on success.
+- Delay: the sensor is read every 5 minutes and the Microsoft write takes about a minute, so the block can come several
+  minutes after the time runs out (the negative balance is kept in the notes capital). Adding a switch while the time is
+  already used up locks immediately. The Family Safety lock is account-wide (Windows, Xbox, mobile).
+
 ## Entities
 
 For each child: *Available time*, *Weekly credit*, *Grades capital* (in minutes) and *Last settlement* (date, initial
@@ -181,7 +203,7 @@ l'enfant (une entrée par enfant).
 
 - **Paramètres de calcul** : temps maximal par semaine (heures, pour 20/20 partout), part des notes (%), note pivot,
   poids minimal, nombre minimal de matières, crédit de repli, notes non significatives, rapport hebdomadaire, service de
-  notification, capteur de notes EcoleDirecte, capteurs de temps d'écran.
+  notification, capteur de notes EcoleDirecte, capteurs de temps d'écran, interrupteurs de verrouillage et d'autorisation.
 - **Matières et multiplicateurs** : ajouter, modifier ou supprimer une matière (nom tel qu'écrit par EcoleDirecte), ou
   cocher **Détecter les matières de la source** pour ajouter d'un coup celles que la source publie. La fenêtre affiche
   la **table courante** (une ligne par matière avec son multiplicateur, par ordre alphabétique) au-dessus du formulaire.
@@ -255,6 +277,31 @@ Fonctionnement :
 Limites : le temps disponible suit le rythme du capteur (5 minutes par défaut) ; l'usage entre le dernier relevé de la
 veille et minuit n'est pas compté ; un relevé numérique erroné (un 0 isolé) serait compté comme un nouvel usage au retour
 de la vraie valeur : le journal le montre et le service `screen_time_wallet.adjust` le corrige.
+
+## Blocage quand le temps est épuisé
+
+Le portefeuille peut bloquer lui-même les appareils quand le temps disponible est épuisé. Dans les options, *Paramètres
+de calcul*, choisir des interrupteurs (domaine `switch`) dans l'une ou les deux listes ; les laisser vides pour verrouiller
+à la main.
+
+- **Interrupteurs de verrouillage** : bloqué à l'état **ON**. C'est le cas de l'**Account Lock** de Family Safety
+  (`switch.<prénom>_lock`) : ON met le temps d'écran autorisé à 0 sur toutes les plateformes, OFF restaure les quotas
+  enregistrés.
+- **Interrupteurs d'autorisation** : bloqué à l'état **OFF**.
+
+Quand le temps disponible est **inférieur ou égal à 0**, le portefeuille met chaque interrupteur choisi à l'état bloqué ;
+quand il redevient positif (recharge du lundi, nouvelles notes, ajustement), il les remet à l'état libre.
+
+- L'état est imposé à **chaque relevé** d'un capteur de temps d'écran, au démarrage et après un bilan, une consommation ou
+  un ajustement : un verrou remis à la main alors que le temps est épuisé est annulé au relevé suivant. Pour donner du
+  temps, utiliser `screen_time_wallet.adjust`.
+- Rien ne change tant qu'un bilan du lundi est dû (source indisponible) : l'enfant n'est jamais bloqué sur un crédit périmé.
+- Un interrupteur `unavailable` ou `unknown` est ignoré puis réessayé. Si l'appel d'un interrupteur échoue, une
+  notification persistante le nomme ; il est réessayé au relevé suivant et la notification disparaît au succès.
+- Délai : le capteur est relevé toutes les 5 minutes et l'écriture Microsoft prend environ une minute, le blocage peut
+  donc arriver plusieurs minutes après l'épuisement (le solde négatif est conservé dans le capital notes). Ajouter un
+  interrupteur alors que le temps est déjà épuisé verrouille immédiatement. Le verrou Family Safety porte sur tout le
+  compte (Windows, Xbox, téléphone).
 
 ## Entités
 

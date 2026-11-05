@@ -6,17 +6,23 @@ from datetime import datetime, timedelta
 
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_call_later, async_track_state_change_event
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_state_change_event,
+    async_track_state_report_event,
+)
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
     MAX_RETRIES,
+    OPT_ALLOW_SWITCHES,
+    OPT_LOCK_SWITCHES,
     OPT_MULTIPLIERS,
     OPT_NOTES_ENTITY,
     OPT_NOTIFY_SERVICE,
@@ -29,7 +35,13 @@ from .ecole_directe_source import EcoleDirecteSource
 from .engine.usage import Baseline, consumed_since, reading_minutes
 from .engine.wallet import Report, Wallet
 from .options import build_config, with_defaults
-from .report import render_anomalies, render_report, render_source_down, render_subjects_added
+from .report import (
+    render_anomalies,
+    render_blocking_failed,
+    render_report,
+    render_source_down,
+    render_subjects_added,
+)
 from .source import GradesSource, NullSource, SourceData
 
 _LOGGER = logging.getLogger(__name__)
@@ -67,6 +79,10 @@ class WalletRuntime:
         self._retries = 0
         self._cancel_retry = None
         self._own_options_update = False  # mise à jour des options faite par le runtime : pas de rechargement
+        self._blocking_lock = asyncio.Lock()  # sérialise les basculements d'interrupteurs
+        self._blocking_task: asyncio.Task | None = None
+        self._blocking_requested = False
+        self._blocking_failed: set[str] = set()  # interrupteurs dont le dernier basculement a échoué
         self.configure_source()
 
     def configure_source(self) -> None:
@@ -88,6 +104,12 @@ class WalletRuntime:
         return with_defaults(self.entry.options)[OPT_USAGE_ENTITIES]
 
     @property
+    def blocking_switches(self) -> list[tuple[str, bool]]:
+        """Interrupteurs pilotés, avec « vrai » quand l'état ON signifie bloqué."""
+        options = with_defaults(self.entry.options)
+        return [(e, True) for e in options[OPT_LOCK_SWITCHES]] + [(e, False) for e in options[OPT_ALLOW_SWITCHES]]
+
+    @property
     def signal(self) -> str:
         return SIGNAL_UPDATE.format(entry_id=self.entry.entry_id)
 
@@ -102,6 +124,7 @@ class WalletRuntime:
 
     def async_notify_entities(self) -> None:
         async_dispatcher_send(self.hass, self.signal)
+        self.async_schedule_blocking()  # le temps disponible a pu changer
 
     async def async_consume(self, minutes: int, reason: str = "") -> None:
         async with self.lock:
@@ -154,7 +177,15 @@ class WalletRuntime:
         async def _changed(event: Event) -> None:
             await self.async_sync_usage(event.data["entity_id"])
 
-        return async_track_state_change_event(self.hass, entities, _changed)
+        # un relevé identique au précédent ne change pas l'état : il est signalé par l'événement « rapporté »
+        unsubscribe_changes = async_track_state_change_event(self.hass, entities, _changed)
+        unsubscribe_reports = async_track_state_report_event(self.hass, entities, _changed)
+
+        def _unsubscribe() -> None:
+            unsubscribe_changes()
+            unsubscribe_reports()
+
+        return _unsubscribe
 
     def _read_usage(self, entity: str):
         """(minutes, jour, nom) du capteur, ou None s'il est absent, indisponible ou inconnu."""
@@ -192,7 +223,9 @@ class WalletRuntime:
             if changed:
                 await self.async_save()
         if changed:
-            self.async_notify_entities()
+            self.async_notify_entities()  # demande aussi la remise en accord des interrupteurs
+        else:
+            self.async_schedule_blocking()  # à chaque relevé, même sans consommation : l'état est imposé
 
     def reset_retries(self) -> None:
         self._retries = 0
@@ -262,6 +295,70 @@ class WalletRuntime:
         if out is not None:
             out.extend(reports)
         return True
+
+    @callback
+    def async_schedule_blocking(self) -> None:
+        """Demande de remettre les interrupteurs en accord avec le temps disponible, en tâche de fond.
+
+        Le basculement peut durer une minute (Family Safety) : il n'attend jamais le verrou du portefeuille.
+        Les demandes rapprochées sont regroupées."""
+        if not self.blocking_switches:
+            return
+        self._blocking_requested = True
+        if self._blocking_task is not None and not self._blocking_task.done():
+            return
+        self._blocking_task = self.entry.async_create_background_task(
+            self.hass, self._async_blocking_loop(), f"{DOMAIN}_blocking_{self.entry.entry_id}"
+        )
+
+    async def _async_blocking_loop(self) -> None:
+        while self._blocking_requested:
+            self._blocking_requested = False
+            await self.async_enforce_blocking()
+
+    async def async_enforce_blocking(self) -> None:
+        """Bloque les interrupteurs choisis quand le temps disponible est ≤ 0, les libère sinon.
+
+        Ne change rien tant qu'un bilan est dû. Un interrupteur déjà dans l'état voulu, indisponible ou inconnu
+        n'est pas appelé ; un basculement en échec est signalé et sera réessayé."""
+        switches = self.blocking_switches
+        if not switches:
+            return
+        async with self._blocking_lock:
+            if self.wallet.pending_settlements(local_now()) > 0:
+                return
+            blocked = self.wallet.available <= 0
+            for entity, on_means_blocked in switches:
+                await self._async_set_switch(entity, want_on=(on_means_blocked == blocked))
+
+    async def _async_set_switch(self, entity: str, want_on: bool) -> None:
+        state = self.hass.states.get(entity)
+        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return
+        if (state.state == STATE_ON) == want_on:
+            self._dismiss_blocking_failure(entity)
+            return
+        try:
+            await self.hass.services.async_call(
+                "switch", "turn_on" if want_on else "turn_off", {"entity_id": entity}, blocking=True
+            )
+        except Exception as error:  # noqa: BLE001 - le service appartient à une autre intégration
+            _LOGGER.warning("Basculement de %s impossible pour %s : %s", entity, self.entry.title, error)
+            self._blocking_failed.add(entity)
+            title, message = render_blocking_failed(self.entry.title, entity, str(error), self.hass.config.language)
+            persistent_notification.async_create(
+                self.hass, message, title=title, notification_id=self._blocking_notification_id(entity)
+            )
+        else:
+            self._dismiss_blocking_failure(entity)
+
+    def _blocking_notification_id(self, entity: str) -> str:
+        return f"{DOMAIN}_{self.entry.entry_id}_blocking_{entity}"
+
+    def _dismiss_blocking_failure(self, entity: str) -> None:
+        if entity in self._blocking_failed:
+            self._blocking_failed.discard(entity)
+            persistent_notification.async_dismiss(self.hass, self._blocking_notification_id(entity))
 
     def _adopt_subjects(self, data: SourceData) -> list[str]:
         """Ajoute à la table des options, avec le multiplicateur 1, les matières de la source qui n'y sont pas.

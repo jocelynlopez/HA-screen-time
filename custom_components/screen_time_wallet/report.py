@@ -20,6 +20,8 @@ TEXTS = {
         "week_credit_fallback": "Crédit de semaine : 0 min (crédit de repli)",
         "totals": "Capital notes : {capital} min · Temps disponible : {available} min",
         "anomaly_title": "Portefeuille de {name} : à vérifier",
+        "blocking_title": "Portefeuille de {name} : blocage impossible",
+        "blocking_failed": "Le basculement de {entity} a échoué : {error}. Il sera réessayé au prochain relevé. Vérifiez l'intégration concernée, ou videz les interrupteurs de blocage dans les options pour reprendre la main.",
         "table_header": "Table des matières :",
         "subjects_title": "Portefeuille de {name} : matières ajoutées",
         "subjects_added": "Matières ajoutées automatiquement avec le multiplicateur 1 : {subjects}. Réglez leur multiplicateur dans les options de l'intégration, étape « Matières » (0 pour les exclure du calcul).",
@@ -40,6 +42,8 @@ TEXTS = {
         "week_credit_fallback": "Week credit: 0 min (fallback credit)",
         "totals": "Notes capital: {capital} min · Available time: {available} min",
         "anomaly_title": "{name}'s wallet: needs attention",
+        "blocking_title": "{name}'s wallet: blocking failed",
+        "blocking_failed": "Switching {entity} failed: {error}. It will be retried at the next reading. Check the related integration, or clear the blocking switches in the options to take control back.",
         "table_header": "Subjects table:",
         "subjects_title": "{name}'s wallet: subjects added",
         "subjects_added": "Subjects added automatically with multiplier 1: {subjects}. Set their multiplier in the integration options, \"Subjects\" step (0 to exclude them from the calculation).",
@@ -132,3 +136,9 @@ def render_subjects_added(name: str, subjects: list[str], table: Mapping[str, ob
     t = TEXTS[_language(language)]
     message = t["subjects_added"].format(subjects=", ".join(subjects))
     return t["subjects_title"].format(name=name), f"{message}\n\n{t['table_header']}\n{render_subjects_table(table, language)}"
+
+
+def render_blocking_failed(name: str, entity: str, error: str, language: str) -> tuple[str, str]:
+    """Titre et message de la notification d'un basculement d'interrupteur en échec."""
+    t = TEXTS[_language(language)]
+    return t["blocking_title"].format(name=name), t["blocking_failed"].format(entity=entity, error=error)

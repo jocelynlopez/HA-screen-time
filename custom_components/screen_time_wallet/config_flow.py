@@ -10,8 +10,10 @@ from homeassistant.helpers import selector
 
 from .const import (
     DOMAIN,
+    OPT_ALLOW_SWITCHES,
     OPT_EXCLUDE_NS,
     OPT_FALLBACK,
+    OPT_LOCK_SWITCHES,
     OPT_MAX_HOURS,
     OPT_MIN_SUBJECTS,
     OPT_MIN_WEIGHT,
@@ -72,12 +74,18 @@ class ScreenTimeWalletOptionsFlow(OptionsFlow):
             # idem pour les capteurs de temps d'écran : aucun capteur
             usage_entities = list(dict.fromkeys(user_input.get(OPT_USAGE_ENTITIES) or []))
             candidate[OPT_USAGE_ENTITIES] = usage_entities
+            # idem pour les interrupteurs de blocage : aucun interrupteur
+            for key in (OPT_LOCK_SWITCHES, OPT_ALLOW_SWITCHES):
+                candidate[key] = list(dict.fromkeys(user_input.get(key) or []))
             if service and not NOTIFY_SERVICE.match(service):
                 errors[OPT_NOTIFY_SERVICE] = "invalid_notify_service"
             elif notes_entity and not self._entity_exists(notes_entity):
                 errors[OPT_NOTES_ENTITY] = "unknown_entity"
             elif not all(self._entity_exists(entity) for entity in usage_entities):
                 errors[OPT_USAGE_ENTITIES] = "unknown_entity"
+            elif bad := next((k for k in (OPT_LOCK_SWITCHES, OPT_ALLOW_SWITCHES)
+                              if not all(self._entity_exists(e) for e in candidate[k])), None):
+                errors[bad] = "unknown_entity"
             else:
                 try:
                     build_config(candidate)
@@ -115,6 +123,12 @@ class ScreenTimeWalletOptionsFlow(OptionsFlow):
                 vol.Optional(
                     OPT_USAGE_ENTITIES, description={"suggested_value": current[OPT_USAGE_ENTITIES] or None}
                 ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", multiple=True)),
+                vol.Optional(
+                    OPT_LOCK_SWITCHES, description={"suggested_value": current[OPT_LOCK_SWITCHES] or None}
+                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="switch", multiple=True)),
+                vol.Optional(
+                    OPT_ALLOW_SWITCHES, description={"suggested_value": current[OPT_ALLOW_SWITCHES] or None}
+                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="switch", multiple=True)),
             }
         )
         return self.async_show_form(step_id="parametres", data_schema=schema, errors=errors)
