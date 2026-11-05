@@ -25,6 +25,7 @@ from .const import (
 )
 from .engine.config import ConfigError, normalize_subject
 from .options import build_config, with_defaults
+from .report import render_subjects_table
 from .runtime import NoSourceError
 
 NOTIFY_SERVICE = re.compile(r"^notify\.[a-z0-9_]+$")
@@ -157,7 +158,15 @@ class ScreenTimeWalletOptionsFlow(OptionsFlow):
                 vol.Required("detect", default=False): bool,
             }
         )
-        return self.async_show_form(step_id="matieres", data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id="matieres", data_schema=schema, errors=errors,
+            description_placeholders={"table": self._subjects_table()},
+        )
+
+    def _subjects_table(self) -> str:
+        """Table courante des matières, en texte, pour les écrans et les messages de fin."""
+        table = with_defaults(self.config_entry.options)[OPT_MULTIPLIERS]
+        return render_subjects_table(table, self.hass.config.language)
 
     async def _async_detect_subjects(self, errors: dict) -> ConfigFlowResult | None:
         """Détection à la demande : le résultat est affiché par une fenêtre de fin ; None si elle a échoué (erreur)."""
@@ -174,5 +183,8 @@ class ScreenTimeWalletOptionsFlow(OptionsFlow):
             errors["base"] = "source_unavailable"
             return None
         if added:
-            return self.async_abort(reason="subjects_added", description_placeholders={"subjects": ", ".join(added)})
-        return self.async_abort(reason="no_new_subjects")
+            return self.async_abort(
+                reason="subjects_added",
+                description_placeholders={"subjects": ", ".join(added), "table": self._subjects_table()},
+            )
+        return self.async_abort(reason="no_new_subjects", description_placeholders={"table": self._subjects_table()})

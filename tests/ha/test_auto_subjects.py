@@ -121,6 +121,21 @@ async def test_notification_a_l_ajout(hass, freezer, ed):
     (title, message), = calls_by_kind(create)["subjects"]
     assert "TECHNOLOGIE" in message and "LATIN" in message and "Matières" in message
     assert [call.data["message"] for call in sent] == [message]
+    assert "Table des matières :" in message and "- LATIN : 1" in message and "- MATHEMATIQUES : 3" in message
+
+
+@pytest.mark.requirement("ha-integration/Table des matières visible")
+async def test_notification_d_ajout_contient_la_table(hass, freezer, ed):
+    add_subject(hass, ed[0], "ed_mael_lopez_technologie", "TECHNOLOGIE", "techno", "14")
+    hass.config.language = "fr"
+    entry = wallet_entry(ed)
+    entry.add_to_hass(hass)
+    with patch(CREATE) as create:
+        await start(hass, freezer, entry, when=WEDNESDAY)
+    (_, message), = calls_by_kind(create)["subjects"]
+    assert "- EDUCATION MUSICALE : 0,5" in message and "- TECHNOLOGIE : 1" in message
+    table = message.split("Table des matières :")[1]
+    assert table.index("EDUCATION MUSICALE") < table.index("MATHEMATIQUES") < table.index("TECHNOLOGIE")
 
 
 @pytest.mark.requirement("ha-integration/Ajout automatique des matières")
@@ -203,7 +218,7 @@ async def test_detection_a_la_demande_ajoute_et_affiche(hass, freezer, ed):
     with patch(CREATE) as create:
         result = await detect(hass, entry)
     assert result["type"] is FlowResultType.ABORT and result["reason"] == "subjects_added"
-    assert result["description_placeholders"] == {"subjects": "TECHNOLOGIE"}
+    assert result["description_placeholders"]["subjects"] == "TECHNOLOGIE"
     assert table(entry)["TECHNOLOGIE"] == 1 and entry.runtime_data.wallet.config.multiplier_for("TECHNOLOGIE") == 1
     assert not create.called  # pas de notification persistante
     assert entry.runtime_data is runtime and runtime.wallet.weekly_credit == credit  # ni rechargement ni recalcul
@@ -249,3 +264,48 @@ async def test_case_decochee_le_nom_reste_obligatoire(hass, freezer, ed):
     entry, _ = await started(hass, freezer, ed)
     result = await detect(hass, entry, detect=False)
     assert result["type"] is FlowResultType.FORM and result["errors"] == {"subject": "subject_required"}
+
+
+# --- Table des matières visible ----------------------------------------------------------------------------------
+
+async def matieres_form(hass, entry):
+    return await open_step(hass, entry, "matieres")
+
+
+@pytest.mark.requirement("ha-integration/Table des matières visible")
+async def test_ecran_des_matieres_affiche_la_table(hass, freezer, ed):
+    hass.config.language = "fr"
+    entry, _ = await started(hass, freezer, ed)
+    form = await matieres_form(hass, entry)
+    table = form["description_placeholders"]["table"]
+    assert "- EDUCATION MUSICALE : 0,5" in table and "- MATHEMATIQUES : 3" in table
+    assert table.index("EDUCATION MUSICALE") < table.index("MATHEMATIQUES")
+
+
+@pytest.mark.requirement("ha-integration/Table des matières visible")
+async def test_table_mise_a_jour_apres_modification(hass, freezer, ed):
+    entry, _ = await started(hass, freezer, ed)
+    form = await matieres_form(hass, entry)
+    await hass.config_entries.options.async_configure(
+        form["flow_id"], {"subject": "MATHEMATIQUES", "multiplier": 2, "remove": False, "detect": False}
+    )
+    await hass.async_block_till_done()
+    form = await matieres_form(hass, entry)
+    assert "- MATHEMATIQUES : 2" in form["description_placeholders"]["table"]
+
+
+@pytest.mark.requirement("ha-integration/Table des matières visible")
+async def test_detection_avec_ajout_affiche_la_nouvelle_ligne(hass, freezer, ed):
+    entry, _ = await started(hass, freezer, ed)
+    add_subject(hass, ed[0], "ed_mael_lopez_technologie", "TECHNOLOGIE", "techno", "14")
+    result = await detect(hass, entry)
+    assert result["description_placeholders"]["subjects"] == "TECHNOLOGIE"
+    assert "- TECHNOLOGIE : 1" in result["description_placeholders"]["table"]
+
+
+@pytest.mark.requirement("ha-integration/Table des matières visible")
+async def test_aucune_nouvelle_matiere_rappelle_la_table(hass, freezer, ed):
+    entry, _ = await started(hass, freezer, ed)
+    result = await detect(hass, entry)
+    assert result["reason"] == "no_new_subjects"
+    assert "- MATHEMATIQUES : 3" in result["description_placeholders"]["table"]

@@ -44,7 +44,7 @@
       },
       "matieres": {
         "title": "Subjects and multipliers",
-        "description": "Enter the subject name as EcoleDirecte writes it. An existing subject is updated, otherwise it is added. Tick \"Detect the subjects of the source\" to add at once those the source publishes (multiplier 1); the subject name is then optional.",
+        "description": "Enter the subject name as EcoleDirecte writes it. An existing subject is updated, otherwise it is added. Tick \"Detect the subjects of the source\" to add at once those the source publishes (multiplier 1); the subject name is then optional.\n\nSubjects table:\n{table}",
         "data": {
           "subject": "Subject",
           "multiplier": "Multiplier",
@@ -64,8 +64,8 @@
       "source_unavailable": "The notes source is unavailable, try again later."
     },
     "abort": {
-      "subjects_added": "Subjects added with multiplier 1: {subjects}. They count from the next settlement.",
-      "no_new_subjects": "No new subject: all those of the source are already in the table."
+      "subjects_added": "Subjects added with multiplier 1: {subjects}. They count from the next settlement.\n\nSubjects table:\n{table}",
+      "no_new_subjects": "No new subject: all those of the source are already in the table.\n\nSubjects table:\n{table}"
     }
   },
   "entity": {

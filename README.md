@@ -36,7 +36,8 @@ entry per child).
   grade, minimum weight, minimum number of subjects, fallback credit, non-significant grades, weekly report,
   notification service, EcoleDirecte notes sensor, screen time sensors.
 - **Subjects and multipliers**: add, edit or remove a subject (name as written by EcoleDirecte), or tick **Detect the
-  subjects of the source** to add at once those the source publishes.
+  subjects of the source** to add at once those the source publishes. The window shows the **current table** (one line
+  per subject with its multiplier, in alphabetical order) above the form.
 
 A rejected grade triggers a notification.
 
@@ -52,7 +53,8 @@ multiplier 1** and used in that calculation. A notification names the added subj
   exclude it instead.
 - **Detect the subjects of the source** (tick it in *Subjects and multipliers*, the subject name is then optional) runs
   the same detection on demand and shows the result in the window, without any notification. The weekly credit is not
-  recomputed: the added subjects count from the next settlement.
+  recomputed: the added subjects count from the next settlement. The result message and the notification of added
+  subjects both list the current table.
 
 ## EcoleDirecte source
 
@@ -181,7 +183,8 @@ l'enfant (une entrée par enfant).
   poids minimal, nombre minimal de matières, crédit de repli, notes non significatives, rapport hebdomadaire, service de
   notification, capteur de notes EcoleDirecte, capteurs de temps d'écran.
 - **Matières et multiplicateurs** : ajouter, modifier ou supprimer une matière (nom tel qu'écrit par EcoleDirecte), ou
-  cocher **Détecter les matières de la source** pour ajouter d'un coup celles que la source publie.
+  cocher **Détecter les matières de la source** pour ajouter d'un coup celles que la source publie. La fenêtre affiche
+  la **table courante** (une ligne par matière avec son multiplicateur, par ordre alphabétique) au-dessus du formulaire.
 
 Une note rejetée déclenche une notification.
 
@@ -198,7 +201,8 @@ multiplicateur 1** et utilisée dans ce calcul. Une notification nomme les mati�
   utilisez 0 pour l'exclure.
 - **Détecter les matières de la source** (case à cocher de *Matières et multiplicateurs*, le nom de la matière est alors
   facultatif) lance la même détection à la demande et affiche le résultat dans la fenêtre, sans notification. Le
-  crédit hebdomadaire n'est pas recalculé : les matières ajoutées comptent à partir du prochain bilan.
+  crédit hebdomadaire n'est pas recalculé : les matières ajoutées comptent à partir du prochain bilan. Le message de
+  résultat et la notification des matières ajoutées listent tous deux la table courante.
 
 ## Source EcoleDirecte
 

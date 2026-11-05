@@ -44,7 +44,7 @@
       },
       "matieres": {
         "title": "Matières et multiplicateurs",
-        "description": "Saisissez le nom de la matière tel qu'EcoleDirecte l'écrit. Une matière existante est modifiée, sinon elle est ajoutée. Cochez « Détecter les matières de la source » pour ajouter d'un coup celles que la source publie (multiplicateur 1) ; le nom de la matière est alors facultatif.",
+        "description": "Saisissez le nom de la matière tel qu'EcoleDirecte l'écrit. Une matière existante est modifiée, sinon elle est ajoutée. Cochez « Détecter les matières de la source » pour ajouter d'un coup celles que la source publie (multiplicateur 1) ; le nom de la matière est alors facultatif.\n\nTable des matières :\n{table}",
         "data": {
           "subject": "Matière",
           "multiplier": "Multiplicateur",
@@ -64,8 +64,8 @@
       "source_unavailable": "La source de notes est indisponible, réessayez plus tard."
     },
     "abort": {
-      "subjects_added": "Matières ajoutées avec le multiplicateur 1 : {subjects}. Elles comptent à partir du prochain bilan.",
-      "no_new_subjects": "Aucune nouvelle matière : toutes celles de la source sont déjà dans la table."
+      "subjects_added": "Matières ajoutées avec le multiplicateur 1 : {subjects}. Elles comptent à partir du prochain bilan.\n\nTable des matières :\n{table}",
+      "no_new_subjects": "Aucune nouvelle matière : toutes celles de la source sont déjà dans la table.\n\nTable des matières :\n{table}"
     }
   },
   "entity": {

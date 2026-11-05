@@ -293,7 +293,8 @@ class WalletRuntime:
         """Notification persistante (et service notify) des matières ajoutées automatiquement."""
         if not added:
             return
-        title, message = render_subjects_added(self.entry.title, added, self.hass.config.language)
+        table = with_defaults(self.entry.options)[OPT_MULTIPLIERS]  # déjà mise à jour par _adopt_subjects
+        title, message = render_subjects_added(self.entry.title, added, table, self.hass.config.language)
         persistent_notification.async_create(
             self.hass, message, title=title, notification_id=f"{DOMAIN}_{self.entry.entry_id}_subjects"
         )

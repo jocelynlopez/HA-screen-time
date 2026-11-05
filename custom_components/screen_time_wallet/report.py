@@ -1,8 +1,9 @@
 """Mise en forme (fonctions pures) du rapport hebdomadaire et de la notification d'anomalie."""
 
+from collections.abc import Mapping
 from fractions import Fraction
 
-from .engine.config import Config
+from .engine.config import Config, normalize_subject, to_fraction
 from .engine.wallet import Report
 
 TEXTS = {
@@ -19,6 +20,7 @@ TEXTS = {
         "week_credit_fallback": "Crédit de semaine : 0 min (crédit de repli)",
         "totals": "Capital notes : {capital} min · Temps disponible : {available} min",
         "anomaly_title": "Portefeuille de {name} : à vérifier",
+        "table_header": "Table des matières :",
         "subjects_title": "Portefeuille de {name} : matières ajoutées",
         "subjects_added": "Matières ajoutées automatiquement avec le multiplicateur 1 : {subjects}. Réglez leur multiplicateur dans les options de l'intégration, étape « Matières » (0 pour les exclure du calcul).",
         "rejected_note": "Note rejetée : {subject} {value}/{scale} du {date} ({reason})",
@@ -38,6 +40,7 @@ TEXTS = {
         "week_credit_fallback": "Week credit: 0 min (fallback credit)",
         "totals": "Notes capital: {capital} min · Available time: {available} min",
         "anomaly_title": "{name}'s wallet: needs attention",
+        "table_header": "Subjects table:",
         "subjects_title": "{name}'s wallet: subjects added",
         "subjects_added": "Subjects added automatically with multiplier 1: {subjects}. Set their multiplier in the integration options, \"Subjects\" step (0 to exclude them from the calculation).",
         "rejected_note": "Rejected grade: {subject} {value}/{scale} of {date} ({reason})",
@@ -114,7 +117,18 @@ def render_anomalies(reports: list[Report], name: str, language: str) -> tuple[s
     return t["anomaly_title"].format(name=name), "\n".join(lines)
 
 
-def render_subjects_added(name: str, subjects: list[str], language: str) -> tuple[str, str]:
-    """Titre et message de la notification des matières ajoutées automatiquement."""
+def render_subjects_table(table: Mapping[str, object], language: str) -> str:
+    """Table des matières en liste Markdown : une ligne par matière avec son multiplicateur, triée sans casse ni accents."""
+    lang = _language(language)
+    lines = []
+    for subject in sorted(table, key=normalize_subject):
+        multiplier = to_fraction(table[subject])
+        lines.append(f"- {subject} : {_number(multiplier, lang, trim=True) if multiplier is not None else table[subject]}")
+    return "\n".join(lines)
+
+
+def render_subjects_added(name: str, subjects: list[str], table: Mapping[str, object], language: str) -> tuple[str, str]:
+    """Titre et message de la notification des matières ajoutées automatiquement, avec la table courante."""
     t = TEXTS[_language(language)]
-    return t["subjects_title"].format(name=name), t["subjects_added"].format(subjects=", ".join(subjects))
+    message = t["subjects_added"].format(subjects=", ".join(subjects))
+    return t["subjects_title"].format(name=name), f"{message}\n\n{t['table_header']}\n{render_subjects_table(table, language)}"
