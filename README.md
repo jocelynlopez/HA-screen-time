@@ -1,7 +1,139 @@
-# Screen Time Wallet — portefeuille de minutes de temps d'écran
+# Screen Time Wallet
+
+🇬🇧 English · [🇫🇷 Français](#-français)
+
+A custom integration for Home Assistant: a **screen time wallet of minutes per child**, topped up every Monday from
+school averages and grades, and debited automatically by the time actually spent on the computer.
+
+## How it works
+
+- Every Monday at 00:00, a **settlement** adds:
+  - a **weekly credit** derived from the general average, reset to its value each week (it does not accumulate);
+  - a **week credit** derived from the grades of the past week, added to the **grades capital**, which accumulates and
+    can go negative.
+- The **available time** is the sum of both. Consumption debits the weekly credit first.
+- A **report** details the calculation every Monday (persistent notification, plus an optional `notify` service).
+
+Without a grades source, the settlement applies the fallback credit (240 min by default). With the **EcoleDirecte
+source** (see below), it uses the real averages and grades. With **screen time sensors** (see below), consumption is
+debited automatically.
+
+## Installation
+
+- **HACS** (recommended): *Custom repositories* → add `https://github.com/jocelynlopez/HA-screen-time` (category
+  *Integration*), download, restart Home Assistant.
+- **Manual** (Home Assistant Container included): copy the `custom_components/screen_time_wallet` folder to
+  `<config>/custom_components/`, then restart Home Assistant.
+
+Then: *Settings → Devices & services → Add integration → Screen Time Wallet* and enter the child's first name (one
+entry per child).
+
+## Options
+
+*Configure* on the entry:
+
+- **Calculation settings**: maximum time per week (hours, for 20/20 everywhere), share of the week's grades (%), pivot
+  grade, minimum weight, minimum number of subjects, fallback credit, non-significant grades, weekly report,
+  notification service, EcoleDirecte notes sensor, screen time sensors.
+- **Subjects and multipliers**: add, edit or remove a subject (name as written by EcoleDirecte).
+
+An unknown subject or a rejected grade triggers a notification.
+
+## EcoleDirecte source
+
+The integration reads the entities of the Home Assistant
+[`ecole_directe`](https://github.com/hacf-fr/hass-ecoledirecte) integration; it never connects to EcoleDirecte itself.
+
+1. Install and configure `ecole_directe` for the child.
+2. In the wallet options, *Calculation settings*, choose the **notes sensor** (for example
+   `sensor.ed_mael_lopez_notes`).
+3. The **averages per subject** are discovered automatically: they are the sensors of the same integration that have
+   the `Nom` and `Code` attributes, their state being the average.
+
+When the sensor is first chosen (or changed), the grades already visible are **remembered without any effect** and the
+weekly credit is computed from the current averages. Only grades entered afterwards count.
+
+Good to know:
+
+- Subject names are matched ignoring case, accents, punctuation and spaces (`ed.physique & sport.` is sport). A subject
+  missing from the table is reported by a notification.
+- In the EcoleDirecte integration, **increase "Maximum notes displayed"** (15 by default): the wallet only sees the
+  grades displayed by that sensor.
+- If the source is unavailable when a settlement is due (Home Assistant startup, missing sensor), the settlement is
+  retried 3 times at 5-minute intervals, then every night; a persistent notification reports the outage and disappears
+  once the settlement succeeds.
+
+## Screen time sensors
+
+The wallet can automatically debit the time actually used, from the sensors of the
+[`microsoft_family_safety`](https://github.com/noiwid/HAFamilySafety) integration (for example
+`sensor.pc_mael_screen_time`). It neither installs nor configures it.
+
+1. Install and configure `microsoft_family_safety`.
+2. In the wallet options, *Calculation settings*, choose one or more **screen time sensors**: pick the **device**
+   sensor (the PC), not the child's total, which also adds up the other devices.
+
+How it works:
+
+- A sensor's reading is the time used during the day: its `total_seconds` attribute divided by 60, or failing that its
+  state in minutes.
+- On each new reading, the **difference from the reference reading** is consumed (weekly credit first, then grades
+  capital). Fractions of a minute are carried over to the next reading; several sensors add up.
+- On a sensor's **first reading** (when chosen in the options), nothing is billed: the usage already elapsed does not
+  count.
+- The counter resets every night. A **change of day** (`date` attribute) or, failing that, a **decrease** of the
+  counter counts as a reset: the new reading is then the consumption since the reset.
+- Reference readings are saved with the state: on restart, the difference that occurred during the shutdown is
+  consumed, without losing or doubling any minute.
+- Automatic consumptions of the same sensor on the same day form **a single journal line**.
+- An "unavailable" or "unknown" sensor is ignored.
+
+Limits: the available time follows the sensor's pace (5 minutes by default); usage between the last reading of the
+previous day and midnight is not counted; an erroneous numeric reading (an isolated 0) would be counted as new usage
+when the real value returns: the journal shows it and the `screen_time_wallet.adjust` service corrects it.
+
+## Entities
+
+For each child: *Available time*, *Weekly credit*, *Grades capital* (in minutes) and *Last settlement* (date, initial
+credit, week credit and the 20 latest movements as attributes).
+
+## Services
+
+- `screen_time_wallet.consume`: consumes minutes (`minutes` > 0, optional `reason`), weekly credit first.
+- `screen_time_wallet.adjust`: adjusts the grades capital (`minutes` positive or negative, non-zero, optional
+  `reason`).
+
+They target a wallet sensor. The entity id depends on Home Assistant's language (in French
+`sensor.mael_temps_disponible`, in English `sensor.mael_available_time`), for example:
+
+```yaml
+action: screen_time_wallet.consume
+target:
+  entity_id: sensor.mael_available_time
+data:
+  minutes: 45
+  reason: console game
+```
+
+## Development
+
+```bash
+uv sync
+uv run pytest
+```
+
+The project follows [OpenSpec](https://github.com/Fission-AI/OpenSpec): requirements are in `openspec/specs/` and each
+test declares the requirement it verifies with the `requirement` marker.
+
+---
+
+# 🇫🇷 Français
+
+[🇬🇧 English](#screen-time-wallet) · 🇫🇷 Français
 
 Intégration personnalisée pour Home Assistant : un **portefeuille de minutes de temps d'écran par enfant**, alimenté
-chaque lundi à partir des moyennes et des notes scolaires.
+chaque lundi à partir des moyennes et des notes scolaires, et débité automatiquement du temps réellement passé sur
+l'ordinateur.
 
 ## Fonctionnement
 
@@ -13,12 +145,13 @@ chaque lundi à partir des moyennes et des notes scolaires.
 - Un **rapport** détaille le calcul chaque lundi (notification persistante, et service `notify` optionnel).
 
 Sans source de notes, le bilan applique le crédit de repli (240 min par défaut). Avec la **source EcoleDirecte**
-(voir plus bas), il utilise les vraies moyennes et les vraies notes. La mesure de la consommation arrive dans une
-version suivante.
+(voir plus bas), il utilise les vraies moyennes et les vraies notes. Avec les **capteurs de temps d'écran** (voir plus
+bas), la consommation est débitée automatiquement.
 
 ## Installation
 
-- **HACS** : *Dépôts personnalisés* → ajouter ce dépôt (catégorie *Intégration*), télécharger, redémarrer Home Assistant.
+- **HACS** (recommandé) : *Dépôts personnalisés* → ajouter `https://github.com/jocelynlopez/HA-screen-time`
+  (catégorie *Intégration*), télécharger, redémarrer Home Assistant.
 - **Manuelle** (Home Assistant Container compris) : copier le dossier `custom_components/screen_time_wallet` dans
   `<config>/custom_components/`, puis redémarrer Home Assistant.
 
@@ -31,7 +164,7 @@ l'enfant (une entrée par enfant).
 
 - **Paramètres de calcul** : temps maximal par semaine (heures, pour 20/20 partout), part des notes (%), note pivot,
   poids minimal, nombre minimal de matières, crédit de repli, notes non significatives, rapport hebdomadaire, service de
-  notification, capteurs de temps d'écran.
+  notification, capteur de notes EcoleDirecte, capteurs de temps d'écran.
 - **Matières et multiplicateurs** : ajouter, modifier ou supprimer une matière (nom tel qu'écrit par EcoleDirecte).
 
 Une matière inconnue ou une note rejetée déclenche une notification.
