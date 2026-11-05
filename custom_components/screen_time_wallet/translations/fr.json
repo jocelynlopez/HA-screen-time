@@ -84,6 +84,19 @@
       "last_settlement": {
         "name": "Dernier bilan"
       }
+    },
+    "number": {
+      "minutes": {
+        "name": "Minutes"
+      }
+    },
+    "button": {
+      "add_time": {
+        "name": "Ajouter du temps"
+      },
+      "remove_time": {
+        "name": "Retirer du temps"
+      }
     }
   },
   "services": {

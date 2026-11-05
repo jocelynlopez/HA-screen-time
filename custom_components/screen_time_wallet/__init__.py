@@ -18,7 +18,7 @@ from .runtime import WalletRuntime, local_now
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.NUMBER, Platform.BUTTON]
 
 type WalletConfigEntry = ConfigEntry[WalletRuntime]
 

@@ -19,6 +19,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONTROL_MINUTES_DEFAULT,
     DOMAIN,
     MAX_RETRIES,
     OPT_ALLOW_SWITCHES,
@@ -76,6 +77,7 @@ class WalletRuntime:
         self.source: GradesSource = NullSource()
         self.source_entity = source_entity  # capteur de notes déjà activé (enregistré avec l'état)
         self.baselines: dict[str, Baseline] = dict(baselines or {})  # relevé de référence de chaque capteur
+        self.control_minutes = CONTROL_MINUTES_DEFAULT  # valeur de l'entité « Minutes » utilisée par les boutons
         self._retries = 0
         self._cancel_retry = None
         self._own_options_update = False  # mise à jour des options faite par le runtime : pas de rechargement

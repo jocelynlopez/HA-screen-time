@@ -19,6 +19,11 @@ OPT_LOCK_SWITCHES = "lock_switches"  # interrupteurs bloqués à l'état ON
 OPT_ALLOW_SWITCHES = "allow_switches"  # interrupteurs bloqués à l'état OFF
 OPT_MULTIPLIERS = "multipliers"
 
+CONTROL_MINUTES_DEFAULT = 15
+CONTROL_MINUTES_MIN = 1
+CONTROL_MINUTES_MAX = 600
+CONTROL_MINUTES_STEP = 5
+
 RETRY_DELAY_MINUTES = 5
 MAX_RETRIES = 3
 

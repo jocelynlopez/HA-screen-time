@@ -136,6 +136,15 @@ again (Monday top-up, new grades, an adjustment), it puts them back in their fre
 For each child: *Available time*, *Weekly credit*, *Grades capital* (in minutes) and *Last settlement* (date, initial
 credit, week credit and the 20 latest movements as attributes).
 
+The same device also has **controls** to give or take time by hand, without YAML:
+
+- **Minutes** (number, 1 to 600 by steps of 5, 15 by default, kept across restarts): the amount used by the buttons.
+- **Add time**: adds that many minutes to the grades capital (same as `screen_time_wallet.adjust`).
+- **Remove time**: consumes that many minutes, weekly credit first (same as `screen_time_wallet.consume`). If the
+  available time reaches 0, the blocking switches react as usual: it is the quickest way to test the blocking.
+
+Both buttons write a journal line with the reason "button". For a one-minute precision use the actions below.
+
 ## Services
 
 - `screen_time_wallet.consume`: consumes minutes (`minutes` > 0, optional `reason`), weekly credit first.
@@ -307,6 +316,18 @@ quand il redevient positif (recharge du lundi, nouvelles notes, ajustement), il 
 
 Pour chaque enfant : *Temps disponible*, *Crédit hebdomadaire*, *Capital notes* (en minutes) et *Dernier bilan*
 (date, crédit initial, crédit de semaine et 20 derniers mouvements en attributs).
+
+Le même appareil porte aussi des **commandes** pour donner ou retirer du temps à la main, sans YAML :
+
+- **Minutes** (nombre, de 1 à 600 par pas de 5, 15 par défaut, conservé au redémarrage) : la quantité utilisée par les
+  boutons.
+- **Ajouter du temps** : ajoute ce nombre de minutes au capital notes (comme `screen_time_wallet.adjust`).
+- **Retirer du temps** : consomme ce nombre de minutes, crédit hebdomadaire d'abord (comme
+  `screen_time_wallet.consume`). Si le temps disponible tombe à 0, les interrupteurs de blocage réagissent comme
+  d'habitude : c'est le moyen le plus rapide de tester le blocage.
+
+Les deux boutons écrivent une ligne du journal avec le motif « bouton ». Pour ajuster à la minute près, utiliser les
+actions ci-dessous.
 
 ## Services
 
