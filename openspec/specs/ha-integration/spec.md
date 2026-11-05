@@ -224,16 +224,16 @@ Le système SHALL créer une notification persistante de HA, propre à chaque po
 - **THEN** aucune notification d'anomalie n'est créée
 
 ### Requirement: Rapport hebdomadaire
-Le système SHALL, à l'issue de chaque bilan et si l'option est activée, publier un rapport qui détaille le calcul : le crédit initial avec la moyenne générale et le nombre de matières, le crédit de semaine avec la moyenne de la semaine, le poids des notes et chaque note comptée, puis le capital notes et le temps disponible. Le rapport est une notification persistante distincte de celle des anomalies, envoyée aussi au service de notification configuré.
+Le système SHALL, à l'issue de chaque bilan et si l'option est activée, publier un rapport simple pour l'enfant : le titre « Ton temps de la semaine (lundi JJ/MM) », le temps reporté des semaines précédentes (s'il est non nul), chaque note comptée avec ses minutes signées, le complément de la moyenne générale avec la moyenne entre parenthèses, puis le temps disponible. Le détail technique du calcul n'y figure pas. Notification persistante distincte de celle des anomalies, envoyée aussi au service configuré.
 
 #### Scenario: Contenu du rapport
-- **GIVEN** un bilan avec sept moyennes et les notes arts plastiques 9/10 et français 7/20
+- **GIVEN** un bilan avec sept moyennes, un capital de 0 et les notes arts plastiques 9/10 et français 7/20
 - **WHEN** le rapport est publié
-- **THEN** il indique la date du lundi, un crédit initial de 228 avec une moyenne générale d'environ 15,80 sur 7 matières, un crédit de semaine de −374 avec une moyenne de la semaine d'environ 7,85 pour un poids de 3,25, les deux notes comptées, le capital notes et le temps disponible
+- **THEN** il indique la date du lundi, les deux notes comptées avec +42 et −415 minutes, un complément de la moyenne générale (15,80) de +227 minutes et un temps disponible de −146 minutes, sans crédit initial ni poids
 
 #### Scenario: Semaine sans note
 - **WHEN** aucune note n'a été vue pendant la semaine
-- **THEN** le rapport indique qu'aucune note n'a été comptée et que la moyenne générale a servi de moyenne de la semaine
+- **THEN** le rapport n'a aucune ligne de note et son complément de la moyenne générale contient tout le crédit du lundi
 
 #### Scenario: Crédit de repli
 - **WHEN** moins de quatre matières ont une moyenne
@@ -252,6 +252,11 @@ Le système SHALL, à l'issue de chaque bilan et si l'option est activée, publi
 #### Scenario: Rapport désactivé
 - **WHEN** l'option du rapport hebdomadaire est désactivée
 - **THEN** aucun rapport n'est publié, mais les notifications d'anomalie restent actives
+
+#### Scenario: Temps reporté
+- **GIVEN** un capital notes de 145 minutes avant le bilan
+- **WHEN** le rapport est publié
+- **THEN** il indique « Reporté des semaines précédentes » avec +145 minutes ; avec un capital nul, cette ligne est absente
 
 ### Requirement: Traductions
 Le système SHALL fournir en français et en anglais les textes des formulaires de configuration et d'options, des noms d'entités, des services et des messages d'erreur.

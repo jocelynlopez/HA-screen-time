@@ -12,8 +12,21 @@ school averages and grades, and debited automatically by the time actually spent
   - a **week credit** derived from the grades of the past week, added to the **grades capital**, which accumulates and
     can go negative.
 - The **available time** is the sum of both. Consumption debits the weekly credit first.
-- A **report** details the calculation every Monday (persistent notification, plus an optional `notify` service). It
-  also lists the **manual movements of the past week** (date, signed minutes and reason of each adjustment or manual
+- A **report** explains the week to the child every Monday (persistent notification, plus an optional `notify` service),
+  with the minutes each grade brought:
+
+  ```
+  Your time this week (Monday 09/11/2026):
+  • Carried over from previous weeks: +145 min
+  • MATHEMATIQUES 15.2/20: +138 min
+  • FRANCAIS 7/20: -415 min
+  • Overall average bonus (15.80): +227 min
+  Available time: 95 min
+  ```
+
+  The *overall average bonus* is the weekly credit (from the overall average) plus the part of the grades credit that
+  this week's grades do not cover (all of it when there is no grade). The lines always add up to the available time. The
+  report also lists the **manual movements of the past week** (date, signed minutes and reason of each adjustment or manual
   consumption, up to 30 lines) and the time consumed automatically by each sensor, so the balance can be traced.
 
 Without a grades source, the settlement applies the fallback credit (240 min by default). With the **EcoleDirecte
@@ -213,9 +226,22 @@ l'ordinateur.
   - un **crédit de semaine** issu de la moyenne des notes de la semaine écoulée, ajouté au **capital notes**, qui se
     cumule et peut être négatif.
 - Le **temps disponible** est la somme des deux. La consommation débite d'abord le crédit hebdomadaire.
-- Un **rapport** détaille le calcul chaque lundi (notification persistante, et service `notify` optionnel). Il liste aussi
-  les **mouvements manuels de la semaine écoulée** (date, minutes signées et raison de chaque ajustement ou consommation
-  manuelle, 30 lignes au plus) et le temps consommé automatiquement par chaque capteur, pour pouvoir retracer le solde.
+- Un **rapport** explique la semaine à l'enfant chaque lundi (notification persistante, et service `notify` optionnel),
+  avec les minutes que chaque note a rapportées :
+
+  ```
+  Ton temps de la semaine (lundi 09/11/2026) :
+  • Reporté des semaines précédentes : +145 min
+  • MATHEMATIQUES 15,2/20 : +138 min
+  • FRANCAIS 7/20 : -415 min
+  • Complément moyenne générale (15,80) : +227 min
+  Temps disponible : 95 min
+  ```
+
+  Le *complément moyenne générale* est le crédit hebdomadaire (issu de la moyenne générale) plus la part du crédit de
+  notes que les notes de la semaine ne couvrent pas (tout, s'il n'y a aucune note). Les lignes s'additionnent toujours
+  au temps disponible. Le rapport liste aussi les **mouvements manuels de la semaine écoulée** (date, minutes signées et raison de chaque
+  ajustement ou consommation manuelle, 30 lignes au plus) et le temps consommé automatiquement par chaque capteur, pour pouvoir retracer le solde.
 
 Sans source de notes, le bilan applique le crédit de repli (240 min par défaut). Avec la **source EcoleDirecte**
 (voir plus bas), il utilise les vraies moyennes et les vraies notes. Avec les **capteurs de temps d'écran** (voir plus

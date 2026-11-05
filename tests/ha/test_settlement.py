@@ -180,14 +180,14 @@ async def test_contenu_du_rapport(hass, freezer, entry):
     with patch(CREATE) as create:
         await tick(hass, freezer, MONDAY_9)
     (title, message), = calls_by_kind(create)["report"]
-    assert "Mael" in title and "Lundi 09/11/2026" in message
+    assert "Mael" in title and "Ton temps de la semaine (lundi 09/11/2026) :" in message
     for expected in (
-        "Crédit initial : 228 min (moyenne générale 15,80 sur 7 matières)",
-        "poids total 3,25", "ARTS PLASTIQUES : 18/20 (poids 0,25)", "FRANCAIS : 7/20 (poids 3)",
-        "Moyenne de la semaine : 7,85", "Crédit de semaine : -374 min",
-        "Capital notes : -374 min · Temps disponible : -146 min",
+        "ARTS PLASTIQUES 18/20 : +42 min", "FRANCAIS 7/20 : -415 min",
+        "Complément moyenne générale (15,80) : +227 min", "Temps disponible : -146 min",
     ):
         assert expected in message
+    for technical in ("Crédit initial", "poids", "Moyenne de la semaine", "Reporté"):
+        assert technical not in message
 
 
 @pytest.mark.requirement("ha-integration/Rapport hebdomadaire")
@@ -197,7 +197,20 @@ async def test_semaine_sans_note(hass, freezer, entry):
     with patch(CREATE) as create:
         await tick(hass, freezer, MONDAY_9)
     (_, message), = calls_by_kind(create)["report"]
-    assert "Aucune note cette semaine" in message and "Crédit de semaine : +342 min" in message
+    assert "Complément moyenne générale (15,80) : +570 min" in message and "Temps disponible : 570 min" in message
+    assert "• FRANCAIS" not in message and "• ARTS" not in message
+
+
+@pytest.mark.requirement("ha-integration/Rapport hebdomadaire")
+async def test_temps_reporte_dans_le_rapport(hass, freezer, entry):
+    hass.config.language = "fr"
+    runtime = await start(hass, freezer, entry, source=FakeSource(SEVEN, AP_FR))
+    runtime.wallet.notes_capital = 145
+    with patch(CREATE) as create:
+        await tick(hass, freezer, MONDAY_9)
+    (_, message), = calls_by_kind(create)["report"]
+    assert "• Reporté des semaines précédentes : +145 min" in message
+    assert message.index("Reporté") < message.index("ARTS PLASTIQUES")
 
 
 @pytest.mark.requirement("ha-integration/Rapport hebdomadaire")
@@ -220,7 +233,7 @@ async def test_lundis_manques_un_seul_message(hass, hass_storage, freezer):
         await start(hass, freezer, entry, when="2026-11-02 08:00:00+00:00")
         await hass.async_block_till_done()
     (_, message), = calls_by_kind(create)["report"]
-    assert message.count("Lundi ") == 3
+    assert message.count("lundi ") == 3
 
 
 @pytest.mark.requirement("ha-integration/Rapport hebdomadaire")

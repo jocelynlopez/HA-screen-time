@@ -354,3 +354,62 @@ def test_prevision_repetee_identique():
     wallet = fresh()
     first = wallet.forecast(WEDNESDAY, SEVEN, AP_FR)
     assert wallet.forecast(WEDNESDAY, SEVEN, AP_FR) == first
+
+
+# --- Minutes apportées par chaque note ----------------------------------------------------------
+
+def report_of(wallet, notes, config_averages=SEVEN):
+    return wallet.settle(NEXT_MONDAY, config_averages, notes)[0]
+
+
+@pytest.mark.requirement("screen-time-wallet/Minutes apportées par chaque note")
+def test_minutes_de_chaque_note():
+    report = report_of(fresh(), AP_FR)
+    assert [(g.subject, minutes) for g, minutes in report.note_minutes] == [("ARTS PLASTIQUES", 42), ("FRANCAIS", -415)]
+
+
+@pytest.mark.requirement("screen-time-wallet/Minutes apportées par chaque note")
+def test_somme_exacte_avec_le_complement():
+    report = report_of(fresh(), AP_FR)
+    assert report.carried == 0 and report.complement == 227
+    assert report.carried + sum(m for _, m in report.note_minutes) + report.complement == report.available == -146
+
+
+@pytest.mark.requirement("screen-time-wallet/Minutes apportées par chaque note")
+def test_capital_reporte():
+    wallet = fresh()
+    wallet.notes_capital = 145
+    report = report_of(wallet, AP_FR)
+    assert report.carried == 145
+    assert report.carried + sum(m for _, m in report.note_minutes) + report.complement == report.available
+
+
+@pytest.mark.requirement("screen-time-wallet/Minutes apportées par chaque note")
+def test_semaine_sans_note_complement_complet():
+    report = report_of(fresh(), [])
+    assert report.note_minutes == [] and report.complement == report.initial_credit + report.week_credit
+    assert report.complement == report.available
+
+
+@pytest.mark.requirement("screen-time-wallet/Minutes apportées par chaque note")
+def test_semaine_partiellement_couverte():
+    light = [grade("MATHEMATIQUES", 16, coefficient=0.5)]  # poids bien inférieur au poids minimal de 3
+    report = report_of(fresh(), light)
+    (_, minutes), = report.note_minutes
+    assert minutes > 0 and report.complement > report.initial_credit  # la moyenne générale complète la semaine
+    assert minutes + report.complement == report.available
+
+
+@pytest.mark.requirement("screen-time-wallet/Minutes apportées par chaque note")
+def test_credit_de_repli_sans_minutes_par_note():
+    report = report_of(fresh(TWO), AP_FR, TWO)
+    assert report.fallback and report.note_minutes == []
+
+
+@pytest.mark.requirement("screen-time-wallet/Minutes apportées par chaque note")
+def test_note_non_significative_ignoree():
+    wallet = Wallet.create(MONDAY, SEVEN, config=Config(exclude_non_significant=True))
+    ignored = Grade("2026-11-04", "FRANCAIS", "Non significatif", 18, 20, 1, True)
+    notes = [grade("FRANCAIS", 7, comment="Sommative"), ignored]
+    report = wallet.settle(NEXT_MONDAY, SEVEN, notes)[0]
+    assert [g.comment for g, _ in report.note_minutes] == ["Sommative"]

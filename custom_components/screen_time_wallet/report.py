@@ -9,14 +9,12 @@ from .engine.wallet import Report
 TEXTS = {
     "fr": {
         "report_title": "Bilan du portefeuille de {name}",
-        "week_title": "Lundi {date}",
-        "initial": "Crédit initial : {minutes} min (moyenne générale {average} sur {count} matières)",
+        "week_title": "Ton temps de la semaine (lundi {date}) :",
+        "carried": "• Reporté des semaines précédentes : {minutes} min",
+        "note_minutes": "• {subject} {value}/20 : {minutes} min",
+        "complement": "• Complément moyenne générale ({average}) : {minutes} min",
+        "available": "Temps disponible : {available} min",
         "initial_fallback": "Crédit initial : {minutes} min (crédit de repli : {count} matière(s) avec moyenne, {needed} requises)",
-        "notes_header": "Notes de la semaine (poids total {weight}) :",
-        "note_line": "• {subject} : {value}/20 (poids {weight})",
-        "no_notes": "Aucune note cette semaine : la moyenne générale sert de moyenne de la semaine.",
-        "week_average": "Moyenne de la semaine : {average}",
-        "week_credit": "Crédit de semaine : {minutes} min",
         "week_credit_fallback": "Crédit de semaine : 0 min (crédit de repli)",
         "totals": "Capital notes : {capital} min · Temps disponible : {available} min",
         "manual_header": "Mouvements manuels de la semaine :",
@@ -41,14 +39,12 @@ TEXTS = {
     },
     "en": {
         "report_title": "{name}'s wallet report",
-        "week_title": "Monday {date}",
-        "initial": "Initial credit: {minutes} min (overall average {average} over {count} subjects)",
+        "week_title": "Your time this week (Monday {date}):",
+        "carried": "• Carried over from previous weeks: {minutes} min",
+        "note_minutes": "• {subject} {value}/20: {minutes} min",
+        "complement": "• Overall average bonus ({average}): {minutes} min",
+        "available": "Available time: {available} min",
         "initial_fallback": "Initial credit: {minutes} min (fallback credit: {count} subject(s) with an average, {needed} required)",
-        "notes_header": "This week's grades (total weight {weight}):",
-        "note_line": "• {subject}: {value}/20 (weight {weight})",
-        "no_notes": "No grade this week: the overall average is used as the week average.",
-        "week_average": "Week average: {average}",
-        "week_credit": "Week credit: {minutes} min",
         "week_credit_fallback": "Week credit: 0 min (fallback credit)",
         "totals": "Notes capital: {capital} min · Available time: {available} min",
         "manual_header": "Manual movements this week:",
@@ -131,28 +127,24 @@ def render_no_report(language: str) -> str:
 
 
 def _report_lines(report: Report, config: Config, t: dict, lang: str) -> list[str]:
+    """Bloc de l'enfant : temps reporté, minutes de chaque note, complément de la moyenne générale, temps disponible.
+
+    Une semaine de crédit de repli garde les lignes de repli (pas de moyenne, donc ni notes ni complément)."""
     lines = []
     if report.fallback:
         lines.append(t["initial_fallback"].format(
             minutes=report.initial_credit, count=report.subjects_count, needed=config.min_subjects))
-    else:
-        lines.append(t["initial"].format(
-            minutes=report.initial_credit, average=_number(report.general_average, lang),
-            count=report.subjects_count))
-    if report.counted:
-        lines.append(t["notes_header"].format(weight=_number(report.week_weight, lang, trim=True)))
-        for grade in report.counted:
-            lines.append(t["note_line"].format(
-                subject=grade.subject, value=_number(grade.on_20(), lang, trim=True),
-                weight=_number(grade.weight(config), lang, trim=True)))
-    elif not report.fallback:
-        lines.append(t["no_notes"])
-    if report.fallback:
         lines.append(t["week_credit_fallback"])
+        lines.append(t["totals"].format(capital=f"{report.notes_capital:+d}", available=report.available))
     else:
-        lines.append(t["week_average"].format(average=_number(report.week_average, lang)))
-        lines.append(t["week_credit"].format(minutes=f"{report.week_credit:+d}"))
-    lines.append(t["totals"].format(capital=f"{report.notes_capital:+d}", available=report.available))
+        if report.carried:
+            lines.append(t["carried"].format(minutes=f"{report.carried:+d}"))
+        for grade, minutes in report.note_minutes:
+            lines.append(t["note_minutes"].format(
+                subject=grade.subject, value=_number(grade.on_20(), lang, trim=True), minutes=f"{minutes:+d}"))
+        lines.append(t["complement"].format(
+            average=_number(report.general_average, lang), minutes=f"{report.complement:+d}"))
+        lines.append(t["available"].format(available=report.available))
     lines.extend(_movement_lines(report, t, lang))
     return lines
 

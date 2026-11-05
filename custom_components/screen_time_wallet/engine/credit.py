@@ -72,6 +72,7 @@ class WeekDetails:
     weight: Fraction  # poids total des notes comptées
     week_average: Fraction | None
     credit: int
+    note_minutes: tuple[tuple[Grade, int], ...] = ()  # minutes apportées par chaque note comptée
 
 
 def week_details(grades: Iterable[Grade], averages: Mapping[str, object], config: Config) -> WeekDetails:
@@ -84,7 +85,20 @@ def week_details(grades: Iterable[Grade], averages: Mapping[str, object], config
     general = general_average(averages, config)
     average = week_average(notes, general, config)
     exact = config.week_rate * config.multiplier_total * (average - config.pivot)
-    return WeekDetails(count, False, general, weight, average, round_half_away_from_zero(exact))
+    return WeekDetails(count, False, general, weight, average, round_half_away_from_zero(exact),
+                       note_minutes(notes, weight, config))
+
+
+def note_minutes(notes: list[Grade], weight: Fraction, config: Config) -> tuple[tuple[Grade, int], ...]:
+    """Minutes signées qu'apporte chaque note au crédit de semaine, arrondies à l'entier.
+
+    Le crédit est linéaire en chaque note : `taux × multiplicateurs × poids × (note − pivot) ÷ max(poids total, poids
+    minimal)`. Le reste du crédit (poids minimal non couvert par les notes) revient à la moyenne générale."""
+    denominator = max(weight, config.min_weight)
+    if denominator == 0:
+        return tuple((g, 0) for g in notes)
+    factor = config.week_rate * config.multiplier_total / denominator
+    return tuple((g, round_half_away_from_zero(factor * g.weight(config) * (g.on_20() - config.pivot))) for g in notes)
 
 
 def week_credit(grades: Iterable[Grade], averages: Mapping[str, object], config: Config) -> int:

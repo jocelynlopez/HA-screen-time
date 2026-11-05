@@ -40,7 +40,7 @@ async def test_attributs_disponibles_apres_un_bilan(hass, freezer):
     await settled(hass)
     sensor = state(hass, entry, "report")
     assert sensor.state.startswith("2026-11-09T00:00:00")
-    assert "Lundi 09/11" in sensor.attributes["last_report"]
+    assert "lundi 09/11" in sensor.attributes["last_report"]
     assert "Prévision du lundi 16/11" in sensor.attributes["forecast"]
 
 
@@ -70,7 +70,7 @@ async def test_rapport_conserve_sans_notification(hass, freezer):
         await tick(hass, freezer, MONDAY_9)
         await settled(hass)
     assert not create.called
-    assert "Lundi 09/11" in state(hass, entry, "report").attributes["last_report"]
+    assert "lundi 09/11" in state(hass, entry, "report").attributes["last_report"]
 
 
 # --- Historique des rapports -------------------------------------------------------------------------------------
@@ -149,11 +149,11 @@ async def test_prevision_suit_le_capteur_de_notes(hass, freezer):
     source = FakeSource(SEVEN)
     hass.states.async_set("sensor.notes", "1")
     entry, runtime = await running(hass, freezer, source=source, notes_entity="sensor.notes")
-    assert "Aucune note cette semaine" in runtime.forecast_text
+    assert "FRANCAIS" not in runtime.forecast_text and "Complément moyenne générale" in runtime.forecast_text
     source.data = FakeSource(SEVEN, AP_FR).data  # une nouvelle note apparaît dans la source
     hass.states.async_set("sensor.notes", "2")
     await settled(hass)
-    assert "FRANCAIS : 7/20" in state(hass, entry, "report").attributes["forecast"]
+    assert "FRANCAIS 7/20 : -" in state(hass, entry, "report").attributes["forecast"]
 
 
 @pytest.mark.requirement("ha-integration/Prévision du rapport")

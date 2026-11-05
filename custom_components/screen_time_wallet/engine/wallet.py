@@ -79,6 +79,9 @@ class Report:
     fallback: bool = False
     notes_capital: int = 0  # après le bilan
     available: int = 0  # après le bilan
+    carried: int = 0  # capital notes reporté, avant le bilan
+    note_minutes: list[tuple[Grade, int]] = field(default_factory=list)  # minutes apportées par chaque note comptée
+    complement: int = 0  # crédit issu de la moyenne générale : crédit initial + crédit de semaine − minutes des notes
     manual: list["Movement"] = field(default_factory=list)  # ajustements et consommations manuels de la semaine
     automatic: dict[str, int] = field(default_factory=dict)  # minutes consommées automatiquement, par motif
 
@@ -134,10 +137,11 @@ class Wallet:
             initial = initial_credit(averages, self.config)
             weekly_change = initial - self.weekly_credit
             self.weekly_credit = initial
+            carried = self.notes_capital
             self.notes_capital += details.credit
             self._record(Movement("bilan", monday, weekly_change, details.credit, "",
                                   {"initial_credit": initial, "week_credit": details.credit}))
-            report = self._report(monday, initial, details, week_notes, pending, step == 1)
+            report = self._report(monday, initial, details, week_notes, pending, step == 1, carried)
             report.manual, report.automatic = self.week_movements(monday)
             reports.append(report)
         self.last_settlement += timedelta(weeks=weeks)
@@ -236,7 +240,7 @@ class Wallet:
         self.movements.append(movement)
         del self.movements[:-MAX_MOVEMENTS]
 
-    def _report(self, monday, initial, details: WeekDetails, week_notes, pending, first) -> Report:
+    def _report(self, monday, initial, details: WeekDetails, week_notes, pending, first, carried) -> Report:
         return Report(
             monday=monday,
             initial_credit=initial,
@@ -251,6 +255,9 @@ class Wallet:
             fallback=details.fallback,
             notes_capital=self.notes_capital,
             available=self.available,
+            carried=carried,
+            note_minutes=list(details.note_minutes),
+            complement=initial + details.credit - sum(minutes for _, minutes in details.note_minutes),
         )
 
     def _classify(self, notes: Iterable[Grade]) -> "_Pending":
