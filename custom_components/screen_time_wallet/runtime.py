@@ -20,6 +20,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
+    MAX_REPORTS,
     MAX_RETRIES,
     OPT_ALLOW_SWITCHES,
     OPT_LOCK_SWITCHES,
@@ -33,11 +34,13 @@ from .const import (
 )
 from .ecole_directe_source import EcoleDirecteSource
 from .engine.usage import Baseline, consumed_since, reading_minutes
-from .engine.wallet import Report, Wallet
+from .engine.wallet import Report, Wallet, monday_midnight
 from .options import build_config, with_defaults
 from .report import (
     render_anomalies,
     render_blocking_failed,
+    render_forecast,
+    render_forecast_unavailable,
     render_report,
     render_source_down,
     render_subjects_added,
@@ -67,6 +70,7 @@ class WalletRuntime:
         wallet: Wallet,
         source_entity: str = "",
         baselines: dict[str, Baseline] | None = None,
+        reports: list[dict] | None = None,
     ) -> None:
         self.hass = hass
         self.entry = entry
@@ -76,6 +80,9 @@ class WalletRuntime:
         self.source: GradesSource = NullSource()
         self.source_entity = source_entity  # capteur de notes déjà activé (enregistré avec l'état)
         self.baselines: dict[str, Baseline] = dict(baselines or {})  # relevé de référence de chaque capteur
+        self.reports: list[dict] = list(reports or [])  # rapports du lundi : monday, title, message
+        self.forecast_text = ""  # prévision du prochain bilan, jamais enregistrée
+        self._forecast_generation = 0
         self._retries = 0
         self._cancel_retry = None
         self._own_options_update = False  # mise à jour des options faite par le runtime : pas de rechargement
@@ -119,12 +126,14 @@ class WalletRuntime:
                 **self.wallet.to_dict(),
                 "source_entity": self.source_entity,
                 "usage_baselines": {entity: b.to_json() for entity, b in self.baselines.items()},
+                "reports": self.reports,
             }
         )
 
     def async_notify_entities(self) -> None:
         async_dispatcher_send(self.hass, self.signal)
         self.async_schedule_blocking()  # le temps disponible a pu changer
+        self.async_schedule_forecast()
 
     async def async_consume(self, minutes: int, reason: str = "") -> None:
         async with self.lock:
@@ -287,6 +296,7 @@ class WalletRuntime:
                 return False
             added = self._adopt_subjects(data)
             reports = self.wallet.settle(now, data.averages, data.notes)
+            self._keep_reports(reports)
             await self.async_save()
         persistent_notification.async_dismiss(self.hass, self._source_notification_id)
         self.async_notify_entities()
@@ -295,6 +305,53 @@ class WalletRuntime:
         if out is not None:
             out.extend(reports)
         return True
+
+    def _keep_reports(self, reports: list[Report]) -> None:
+        """Ajoute chaque rapport du lundi à l'historique (52 au plus), qu'il soit notifié ou non."""
+        language, name, config = self.hass.config.language, self.entry.title, self.wallet.config
+        for report in reports:
+            title, message = render_report([report], name, config, language)
+            self.reports.append({"monday": report.monday.isoformat(), "title": title, "message": message})
+        del self.reports[:-MAX_REPORTS]
+
+    @callback
+    def async_schedule_forecast(self) -> None:
+        """Recalcule la prévision en tâche de fond ; un calcul plus récent remplace celui qui est en cours."""
+        self._forecast_generation += 1
+        self.entry.async_create_background_task(
+            self.hass, self._async_forecast(self._forecast_generation), f"{DOMAIN}_forecast_{self.entry.entry_id}"
+        )
+
+    async def _async_forecast(self, generation: int) -> None:
+        now = local_now()
+        try:
+            data = await self.source.async_fetch()
+        except Exception:  # noqa: BLE001 - la source est un point d'extension ; le bilan réel signale l'erreur
+            data = None
+        if generation != self._forecast_generation:
+            return
+        language, config = self.hass.config.language, self.wallet.config
+        if data is not None:
+            text = render_forecast(self.wallet.forecast(now, data.averages, data.notes), config, language)
+        else:
+            monday = monday_midnight(now) + timedelta(weeks=1)
+            manual, automatic = self.wallet.week_movements(monday)
+            text = render_forecast_unavailable(Report(monday, 0, 0, manual=manual, automatic=automatic), language)
+        if text != self.forecast_text:
+            self.forecast_text = text
+            async_dispatcher_send(self.hass, self.signal)
+
+    @callback
+    def async_track_notes(self):
+        """Recalcule la prévision quand le capteur de notes change ; renvoie la fonction d'arrêt."""
+        entity = self.notes_entity
+        if not entity:
+            return lambda: None
+
+        async def _changed(_event: Event) -> None:
+            self.async_schedule_forecast()
+
+        return async_track_state_change_event(self.hass, [entity], _changed)
 
     @callback
     def async_schedule_blocking(self) -> None:

@@ -138,6 +138,22 @@ again (Monday top-up, new grades, an adjustment), it puts them back in their fre
 For each child: *Available time*, *Weekly credit*, *Grades capital* (in minutes) and *Last settlement* (date, initial
 credit, week credit and the 20 latest movements as attributes).
 
+The *Report* sensor (state: date of the last settlement) keeps every Monday report (the last 52) and exposes, as
+Markdown attributes, `last_report`, `history` (the 12 previous reports, newest first) and `forecast`: what the next
+Monday settlement will give if nothing changes until then (new weekly credit, grades not counted yet, expected capital
+and available time), together with this week's manual movements and reasons. Show it on the child's dashboard with a
+Markdown card (replace the entity with yours):
+
+```yaml
+type: markdown
+title: Report
+content: |
+  {{ state_attr('sensor.mael_report', 'forecast') }}
+
+  ---
+  {{ state_attr('sensor.mael_report', 'last_report') }}
+```
+
 Giving or taking time by hand is done with a **script that opens an input window** (minutes and a required reason).
 Import the blueprints in one click, then create a script from each one and pick any sensor of the child's wallet:
 
@@ -325,6 +341,22 @@ quand il redevient positif (recharge du lundi, nouvelles notes, ajustement), il 
 
 Pour chaque enfant : *Temps disponible*, *Crédit hebdomadaire*, *Capital notes* (en minutes) et *Dernier bilan*
 (date, crédit initial, crédit de semaine et 20 derniers mouvements en attributs).
+
+Le capteur *Rapport* (état : date du dernier bilan) conserve tous les rapports du lundi (les 52 derniers) et expose en
+attributs Markdown `last_report`, `history` (les 12 rapports précédents, du plus récent au plus ancien) et `forecast` :
+ce que donnera le bilan du prochain lundi si rien ne change d'ici là (nouveau crédit hebdomadaire, notes pas encore
+comptées, capital et temps disponible attendus), avec les mouvements manuels de la semaine et leurs raisons. Affichez-le
+sur le tableau de bord de l'enfant avec une carte Markdown (remplacez l'entité par la vôtre) :
+
+```yaml
+type: markdown
+title: Rapport
+content: |
+  {{ state_attr('sensor.mael_rapport', 'forecast') }}
+
+  ---
+  {{ state_attr('sensor.mael_rapport', 'last_report') }}
+```
 
 Donner ou retirer du temps à la main se fait avec un **script qui ouvre une fenêtre de saisie** (minutes et raison
 obligatoire). Importez les blueprints en un clic, puis créez un script depuis chacun en choisissant n'importe quel capteur

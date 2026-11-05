@@ -83,6 +83,9 @@
       },
       "last_settlement": {
         "name": "Last settlement"
+      },
+      "report": {
+        "name": "Report"
       }
     }
   },

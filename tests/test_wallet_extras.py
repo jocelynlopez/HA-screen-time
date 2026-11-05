@@ -306,3 +306,51 @@ def test_activation_avec_moins_de_quatre_matieres():
     wallet = Wallet.create(MONDAY, {})
     wallet.activate_source(datetime(2026, 11, 4), TWO, [])
     assert wallet.weekly_credit == 240
+
+
+# --- Prévision du prochain bilan ----------------------------------------------------------------
+
+WEDNESDAY = datetime(2026, 11, 4, 10, 0)
+
+
+@pytest.mark.requirement("screen-time-wallet/Prévision du prochain bilan")
+def test_prevision_sans_effet():
+    wallet = fresh()
+    wallet.consume(30, WEDNESDAY, "jeu")
+    before = (wallet.to_dict(), wallet.seen_keys.copy())
+    wallet.forecast(WEDNESDAY, SEVEN, AP_FR)
+    assert (wallet.to_dict(), wallet.seen_keys) == before
+
+
+@pytest.mark.requirement("screen-time-wallet/Prévision du prochain bilan")
+def test_prevision_compte_les_notes_a_venir():
+    wallet = fresh()
+    report = wallet.forecast(WEDNESDAY, SEVEN, AP_FR)
+    assert report.monday == NEXT_MONDAY and len(report.counted) == 2
+    assert report.notes_capital == report.week_credit and report.available == report.initial_credit + report.week_credit
+    assert wallet.notes_capital == 0  # le vrai portefeuille ne bouge pas
+
+
+@pytest.mark.requirement("screen-time-wallet/Prévision du prochain bilan")
+def test_prevision_reprend_les_mouvements_de_la_semaine():
+    wallet = fresh()
+    wallet.adjust(30, datetime(2026, 11, 3, 18, 0), "devoirs")
+    wallet.consume(12, WEDNESDAY, "PC", merge=True)
+    report = wallet.forecast(WEDNESDAY, SEVEN, [])
+    assert [m.reason for m in report.manual] == ["devoirs"] and report.automatic == {"PC": 12}
+
+
+@pytest.mark.requirement("screen-time-wallet/Prévision du prochain bilan")
+def test_prevision_rattrape_un_bilan_en_retard():
+    wallet = fresh()
+    late = datetime(2026, 11, 11, 10, 0)  # le lundi 9 n'a pas été traité
+    report = wallet.forecast(late, SEVEN, [])
+    assert report.monday == datetime(2026, 11, 16)
+    assert wallet.last_settlement == MONDAY and wallet.pending_settlements(late) == 1
+
+
+@pytest.mark.requirement("screen-time-wallet/Prévision du prochain bilan")
+def test_prevision_repetee_identique():
+    wallet = fresh()
+    first = wallet.forecast(WEDNESDAY, SEVEN, AP_FR)
+    assert wallet.forecast(WEDNESDAY, SEVEN, AP_FR) == first

@@ -19,6 +19,8 @@ OPT_LOCK_SWITCHES = "lock_switches"  # interrupteurs bloqués à l'état ON
 OPT_ALLOW_SWITCHES = "allow_switches"  # interrupteurs bloqués à l'état OFF
 OPT_MULTIPLIERS = "multipliers"
 
+MAX_REPORTS = 52  # rapports du lundi conservés (un an)
+EXPOSED_HISTORY = 12  # rapports précédents exposés en attribut
 RETRY_DELAY_MINUTES = 5
 MAX_RETRIES = 3
 

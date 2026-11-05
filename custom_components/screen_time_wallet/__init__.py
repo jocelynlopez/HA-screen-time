@@ -1,6 +1,7 @@
 """Intégration Home Assistant « Portefeuille de minutes » (screen_time_wallet)."""
 
 import logging
+from datetime import datetime
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -10,7 +11,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 
-from .const import DOMAIN, STORAGE_VERSION
+from .const import DOMAIN, MAX_REPORTS, STORAGE_VERSION
 from .engine.config import ConfigError
 from .engine.usage import Baseline
 from .engine.wallet import Wallet, WalletStateError
@@ -48,7 +49,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> bo
 
     _remove_retired_entities(hass, entry)
     runtime = WalletRuntime(
-        hass, entry, store, wallet, (data or {}).get("source_entity", ""), _load_baselines(data or {})
+        hass, entry, store, wallet, (data or {}).get("source_entity", ""), _load_baselines(data or {}),
+        _load_reports(data or {}),
     )
     if is_new:
         await runtime.async_save()
@@ -63,7 +65,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> bo
     entry.async_on_unload(async_track_time_change(hass, _daily, hour=0, minute=0, second=0))
     entry.async_on_unload(runtime.async_cancel_retry)
     entry.async_on_unload(runtime.async_track_usage())
+    entry.async_on_unload(runtime.async_track_notes())
     await runtime.async_refresh()  # activation de la source et rattrapage des lundis manqués
+    runtime.async_schedule_forecast()
     return True
 
 
@@ -85,6 +89,18 @@ def _load_baselines(data: dict) -> dict[str, Baseline]:
         except (KeyError, TypeError, ValueError, ZeroDivisionError):
             _LOGGER.warning("Relevé de référence illisible pour %s, ignoré", entity)
     return baselines
+
+
+def _load_reports(data: dict) -> list[dict]:
+    """Rapports du lundi enregistrés ; une entrée illisible est ignorée."""
+    reports = []
+    for raw in data.get("reports") or []:
+        try:
+            datetime.fromisoformat(raw["monday"])
+            reports.append({"monday": raw["monday"], "title": str(raw["title"]), "message": str(raw["message"])})
+        except (KeyError, TypeError, ValueError):
+            _LOGGER.warning("Rapport enregistré illisible, ignoré")
+    return reports[-MAX_REPORTS:]
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> bool:

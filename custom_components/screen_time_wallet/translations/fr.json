@@ -83,6 +83,9 @@
       },
       "last_settlement": {
         "name": "Dernier bilan"
+      },
+      "report": {
+        "name": "Rapport"
       }
     }
   },

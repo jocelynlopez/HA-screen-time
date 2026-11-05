@@ -21,8 +21,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import WalletConfigEntry
+from .const import EXPOSED_HISTORY
 from .engine.wallet import InvalidAdjustmentError, InvalidConsumptionError, Movement, Wallet
 from .entity import wallet_device_info, wallet_unique_id
+from .report import render_no_report
 from .runtime import WalletRuntime
 
 EXPOSED_MOVEMENTS = 20
@@ -57,6 +59,10 @@ DESCRIPTIONS = (
     ),
 )
 
+REPORT_DESCRIPTION = WalletSensorDescription(
+    key="report", translation_key="report", device_class=SensorDeviceClass.TIMESTAMP, value_fn=lambda w: None,
+)
+
 CONSUME_SCHEMA = {
     vol.Required("minutes"): vol.All(vol.Coerce(int), vol.Range(min=1)),
     vol.Optional("reason", default=""): cv.string,
@@ -72,6 +78,7 @@ async def async_setup_entry(
 ) -> None:
     runtime = entry.runtime_data
     async_add_entities(WalletSensor(runtime, description) for description in DESCRIPTIONS)
+    async_add_entities([WalletReportSensor(runtime, REPORT_DESCRIPTION)])
 
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service("consume", CONSUME_SCHEMA, "async_consume")
@@ -120,3 +127,25 @@ class WalletSensor(SensorEntity):
             await self.runtime.async_adjust(minutes, reason)
         except InvalidAdjustmentError as error:
             raise ServiceValidationError(str(error)) from error
+
+
+class WalletReportSensor(WalletSensor):
+    """Rapports en Markdown pour une carte du tableau de bord : état = date du dernier bilan."""
+
+    _unrecorded_attributes = frozenset({"last_report", "history", "forecast"})
+
+    @property
+    def native_value(self) -> datetime | None:
+        reports = self.runtime.reports
+        if not reports:
+            return None
+        return datetime.fromisoformat(reports[-1]["monday"]).replace(tzinfo=dt_util.get_default_time_zone())
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        reports = self.runtime.reports
+        return {
+            "last_report": reports[-1]["message"] if reports else render_no_report(self.hass.config.language),
+            "history": [r["message"] for r in reversed(reports[:-1][-EXPOSED_HISTORY:])],
+            "forecast": self.runtime.forecast_text,
+        }

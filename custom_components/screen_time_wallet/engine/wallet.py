@@ -138,11 +138,18 @@ class Wallet:
             self._record(Movement("bilan", monday, weekly_change, details.credit, "",
                                   {"initial_credit": initial, "week_credit": details.credit}))
             report = self._report(monday, initial, details, week_notes, pending, step == 1)
-            report.manual, report.automatic = self._week_movements(monday)
+            report.manual, report.automatic = self.week_movements(monday)
             reports.append(report)
         self.last_settlement += timedelta(weeks=weeks)
         self.seen_keys |= pending.seen
         return reports
+
+    def forecast(self, now: datetime, averages: Mapping[str, object], notes: Iterable[Grade]) -> Report:
+        """Compte rendu du bilan du prochain lundi 00h00, calculé sur une copie : le portefeuille n'est pas modifié.
+
+        Les bilans déjà dus sont rattrapés dans la copie ; le compte rendu renvoyé est celui du prochain lundi."""
+        copy = Wallet.from_dict(self.to_dict(), self.config)
+        return copy.settle(monday_midnight(now) + timedelta(weeks=1), averages, notes)[-1]
 
     def consume(self, minutes: int, now: datetime | None = None, reason: str = "", merge: bool = False) -> None:
         """Débite d'abord le crédit hebdomadaire, puis le capital notes (qui peut devenir négatif).
@@ -209,7 +216,7 @@ class Wallet:
         except (KeyError, TypeError, ValueError) as error:
             raise WalletStateError(f"état illisible : {error}") from error
 
-    def _week_movements(self, monday: datetime) -> tuple[list[Movement], dict[str, int]]:
+    def week_movements(self, monday: datetime) -> tuple[list[Movement], dict[str, int]]:
         """Mouvements manuels (chronologiques) et total automatique par motif de la semaine finissant ce lundi.
 
         La semaine va du lundi précédent (exclu) à ce lundi (inclus), d'après la date de chaque mouvement."""

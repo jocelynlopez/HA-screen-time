@@ -10,6 +10,7 @@ from homeassistant.util import dt as dt_util
 from custom_components.screen_time_wallet.const import DOMAIN
 from custom_components.screen_time_wallet.ecole_directe_source import EcoleDirecteSource
 from custom_components.screen_time_wallet.engine.wallet import Wallet
+from custom_components.screen_time_wallet.runtime import WalletRuntime
 from custom_components.screen_time_wallet.source import SourceUnavailableError
 
 from conftest import make_entry
@@ -132,7 +133,9 @@ async def test_tentatives_epuisees_attente_du_declencheur_quotidien(hass, hass_s
     entry.add_to_hass(hass)
     preload_due(hass_storage, entry, ed[1])
     down = AsyncMock(side_effect=SourceUnavailableError("hors service"))
-    with patch.object(EcoleDirecteSource, "async_fetch", down):
+    with patch.object(EcoleDirecteSource, "async_fetch", down), patch.object(
+        WalletRuntime, "async_schedule_forecast"  # la prévision lit aussi la source : on ne compte que les bilans
+    ):
         runtime = await start(hass, freezer, entry, MONDAY_2)
         assert down.await_count == 1  # tentative au démarrage
         for _ in range(3):

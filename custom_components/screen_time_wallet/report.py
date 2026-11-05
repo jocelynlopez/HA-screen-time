@@ -25,6 +25,10 @@ TEXTS = {
         "no_reason": "sans motif",
         "automatic_header": "Consommation automatique :",
         "automatic_line": "• {reason} : {minutes} min",
+        "forecast_title": "Prévision du lundi {date}",
+        "forecast_note": "Si rien ne change d'ici là.",
+        "forecast_unavailable": "Prévision indisponible : source des notes inaccessible.",
+        "no_report": "Aucun rapport pour le moment.",
         "anomaly_title": "Portefeuille de {name} : à vérifier",
         "blocking_title": "Portefeuille de {name} : blocage impossible",
         "blocking_failed": "Le basculement de {entity} a échoué : {error}. Il sera réessayé au prochain relevé. Vérifiez l'intégration concernée, ou videz les interrupteurs de blocage dans les options pour reprendre la main.",
@@ -53,6 +57,10 @@ TEXTS = {
         "no_reason": "no reason",
         "automatic_header": "Automatic consumption:",
         "automatic_line": "• {reason}: {minutes} min",
+        "forecast_title": "Forecast for Monday {date}",
+        "forecast_note": "If nothing changes until then.",
+        "forecast_unavailable": "Forecast unavailable: grades source unreachable.",
+        "no_report": "No report yet.",
         "anomaly_title": "{name}'s wallet: needs attention",
         "blocking_title": "{name}'s wallet: blocking failed",
         "blocking_failed": "Switching {entity} failed: {error}. It will be retried at the next reading. Check the related integration, or clear the blocking switches in the options to take control back.",
@@ -95,30 +103,58 @@ def render_report(reports: list[Report], name: str, config: Config, language: st
     sections = []
     for report in reports:
         lines = [t["week_title"].format(date=_date(report.monday, lang))]
-        if report.fallback:
-            lines.append(t["initial_fallback"].format(
-                minutes=report.initial_credit, count=report.subjects_count, needed=config.min_subjects))
-        else:
-            lines.append(t["initial"].format(
-                minutes=report.initial_credit, average=_number(report.general_average, lang),
-                count=report.subjects_count))
-        if report.counted:
-            lines.append(t["notes_header"].format(weight=_number(report.week_weight, lang, trim=True)))
-            for grade in report.counted:
-                lines.append(t["note_line"].format(
-                    subject=grade.subject, value=_number(grade.on_20(), lang, trim=True),
-                    weight=_number(grade.weight(config), lang, trim=True)))
-        elif not report.fallback:
-            lines.append(t["no_notes"])
-        if report.fallback:
-            lines.append(t["week_credit_fallback"])
-        else:
-            lines.append(t["week_average"].format(average=_number(report.week_average, lang)))
-            lines.append(t["week_credit"].format(minutes=f"{report.week_credit:+d}"))
-        lines.append(t["totals"].format(capital=f"{report.notes_capital:+d}", available=report.available))
-        lines.extend(_movement_lines(report, t, lang))
+        lines.extend(_report_lines(report, config, t, lang))
         sections.append("\n".join(lines))
     return t["report_title"].format(name=name), "\n\n".join(sections)
+
+
+def render_forecast(report: Report, config: Config, language: str) -> str:
+    """Prévision du bilan du prochain lundi : même détail que le rapport, titré comme une prévision."""
+    lang = _language(language)
+    t = TEXTS[lang]
+    lines = [t["forecast_title"].format(date=_date(report.monday, lang)), t["forecast_note"]]
+    lines.extend(_report_lines(report, config, t, lang))
+    return "\n".join(lines)
+
+
+def render_forecast_unavailable(report: Report, language: str) -> str:
+    """Prévision sans la source des notes : seuls les mouvements de la semaine sont connus."""
+    lang = _language(language)
+    t = TEXTS[lang]
+    lines = [t["forecast_title"].format(date=_date(report.monday, lang)), t["forecast_unavailable"]]
+    lines.extend(_movement_lines(report, t, lang))
+    return "\n".join(lines)
+
+
+def render_no_report(language: str) -> str:
+    return TEXTS[_language(language)]["no_report"]
+
+
+def _report_lines(report: Report, config: Config, t: dict, lang: str) -> list[str]:
+    lines = []
+    if report.fallback:
+        lines.append(t["initial_fallback"].format(
+            minutes=report.initial_credit, count=report.subjects_count, needed=config.min_subjects))
+    else:
+        lines.append(t["initial"].format(
+            minutes=report.initial_credit, average=_number(report.general_average, lang),
+            count=report.subjects_count))
+    if report.counted:
+        lines.append(t["notes_header"].format(weight=_number(report.week_weight, lang, trim=True)))
+        for grade in report.counted:
+            lines.append(t["note_line"].format(
+                subject=grade.subject, value=_number(grade.on_20(), lang, trim=True),
+                weight=_number(grade.weight(config), lang, trim=True)))
+    elif not report.fallback:
+        lines.append(t["no_notes"])
+    if report.fallback:
+        lines.append(t["week_credit_fallback"])
+    else:
+        lines.append(t["week_average"].format(average=_number(report.week_average, lang)))
+        lines.append(t["week_credit"].format(minutes=f"{report.week_credit:+d}"))
+    lines.append(t["totals"].format(capital=f"{report.notes_capital:+d}", available=report.available))
+    lines.extend(_movement_lines(report, t, lang))
+    return lines
 
 
 def _movement_lines(report: Report, t: dict, lang: str) -> list[str]:
