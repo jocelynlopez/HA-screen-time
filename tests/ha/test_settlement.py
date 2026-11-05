@@ -244,3 +244,18 @@ async def test_rapport_desactive_anomalies_conservees(hass, freezer):
         await tick(hass, freezer, MONDAY_9)
     kinds = calls_by_kind(create)
     assert "report" not in kinds and "anomalies" in kinds
+
+
+@pytest.mark.requirement("ha-integration/Mouvements manuels dans le rapport")
+async def test_rapport_du_lundi_contient_les_mouvements_manuels(hass, freezer, entry):
+    hass.config.language = "fr"
+    runtime = await start(hass, freezer, entry, source=FakeSource(SEVEN, []))
+    await runtime.async_adjust(30, "aide aux devoirs")  # action adjust avec son champ reason
+    await runtime.async_consume(45, "jeu console")
+    await runtime.async_adjust(10)  # sans motif
+    with patch(CREATE) as create:
+        await tick(hass, freezer, MONDAY_9)
+    (_, report), = calls_by_kind(create)["report"]
+    assert "Mouvements manuels de la semaine" in report
+    assert "+30 min · aide aux devoirs" in report and "-45 min · jeu console" in report
+    assert "+10 min · sans motif" in report

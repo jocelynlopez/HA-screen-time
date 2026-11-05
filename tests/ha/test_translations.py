@@ -52,8 +52,6 @@ def test_textes_utilises_par_le_code_presents(language):
     assert {"subjects_title", "subjects_added", "table_header",
             "blocking_title", "blocking_failed"} <= set(report.TEXTS[language])
     assert {"lock_switches", "allow_switches"} <= set(t["options"]["step"]["parametres"]["data"])
-    assert set(t["entity"]["number"]) == {"minutes"} and set(t["entity"]["button"]) == {"add_time", "remove_time"}
-    assert "button_reason" in report.TEXTS[language]
     for text in (t["options"]["step"]["matieres"]["description"], t["options"]["abort"]["subjects_added"],
                  t["options"]["abort"]["no_new_subjects"]):
         assert "{table}" in text

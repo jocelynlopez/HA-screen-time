@@ -1,0 +1,44 @@
+blueprint:
+  name: "Screen Time Wallet : ajouter du temps (add time)"
+  description: >-
+    Ajoute des minutes au capital notes, avec une raison obligatoire.
+    Adds minutes to the grades capital, with a required reason.
+  domain: script
+  source_url: https://github.com/jocelynlopez/HA-screen-time/blob/main/blueprints/script/screen_time_wallet/add_time.yaml
+  input:
+    wallet_sensor:
+      name: Capteur du portefeuille / Wallet sensor
+      description: >-
+        N'importe quel capteur du portefeuille de l'enfant, par exemple « Temps disponible ».
+        Any sensor of the child's wallet, for example "Available time".
+      selector:
+        entity:
+          domain: sensor
+          integration: screen_time_wallet
+fields:
+  minutes:
+    name: Minutes
+    description: Nombre de minutes / Number of minutes
+    required: true
+    default: 15
+    selector:
+      number:
+        min: 1
+        max: 600
+        step: 1
+        unit_of_measurement: min
+  reason:
+    name: Raison / Reason
+    description: Justification, reprise dans le rapport du lundi / Justification, shown in the Monday report
+    required: true
+    selector:
+      text: {}
+sequence:
+  - action: screen_time_wallet.adjust
+    target:
+      entity_id: !input wallet_sensor
+    data:
+      minutes: "{{ minutes }}"
+      reason: "{{ reason }}"
+mode: single
+icon: mdi:timer-plus

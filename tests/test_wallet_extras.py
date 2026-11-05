@@ -117,6 +117,80 @@ def test_apres_un_autre_mouvement_nouveau_mouvement():
     assert [m.kind for m in wallet.movements] == ["consommation", "ajustement", "consommation"]
 
 
+# --- Origine des mouvements ----------------------------------------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Origine des mouvements")
+def test_consommation_automatique_marquee():
+    wallet = fresh()
+    wallet.consume(5, datetime(2026, 11, 4, 9), "PC de Mael", merge=True)
+    assert wallet.movements[-1].detail == {"origin": "auto"}
+
+
+@pytest.mark.requirement("screen-time-wallet/Origine des mouvements")
+def test_consommation_manuelle_sans_origine():
+    wallet = fresh()
+    wallet.consume(10, datetime(2026, 11, 4, 9), "jeu console")
+    assert "origin" not in wallet.movements[-1].detail
+
+
+@pytest.mark.requirement("screen-time-wallet/Origine des mouvements")
+def test_ajustement_sans_origine():
+    wallet = fresh()
+    wallet.adjust(30, datetime(2026, 11, 4, 9), "aide aux devoirs")
+    assert "origin" not in wallet.movements[-1].detail
+
+
+@pytest.mark.requirement("screen-time-wallet/Origine des mouvements")
+def test_automatique_apres_manuelle_de_meme_motif_nouveau_mouvement():
+    wallet = fresh()
+    wallet.consume(10, datetime(2026, 11, 4, 9), "PC de Mael")  # manuelle
+    wallet.consume(5, datetime(2026, 11, 4, 10), "PC de Mael", merge=True)  # automatique, même jour et motif
+    assert len(wallet.movements) == 2 and wallet.movements[0].weekly_change == -10
+
+
+# --- Mouvements de la semaine dans le compte rendu ----------------------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Mouvements de la semaine dans le compte rendu")
+def test_mouvements_manuels_de_la_semaine():
+    wallet = fresh()
+    wallet.consume(45, datetime(2026, 11, 5, 20), "jeu console")  # jeudi
+    wallet.adjust(30, datetime(2026, 11, 4, 18), "aide aux devoirs")  # mercredi, saisi après
+    report = wallet.settle(NEXT_MONDAY, SEVEN, [])[0]
+    assert [(m.kind, m.reason, m.weekly_change + m.capital_change) for m in report.manual] == [
+        ("ajustement", "aide aux devoirs", 30), ("consommation", "jeu console", -45)]
+
+
+@pytest.mark.requirement("screen-time-wallet/Mouvements de la semaine dans le compte rendu")
+def test_total_automatique_par_capteur():
+    wallet = fresh()
+    for minutes, hour in ((40, 9), (60, 12)):
+        wallet.consume(minutes, datetime(2026, 11, 4, hour), "PC de Mael", merge=True)
+    wallet.consume(20, datetime(2026, 11, 5, 10), "Tablette", merge=True)
+    report = wallet.settle(NEXT_MONDAY, SEVEN, [])[0]
+    assert report.automatic == {"PC de Mael": 100, "Tablette": 20} and report.manual == []
+
+
+@pytest.mark.requirement("screen-time-wallet/Mouvements de la semaine dans le compte rendu")
+def test_semaine_sans_mouvement():
+    report = fresh().settle(NEXT_MONDAY, SEVEN, [])[0]
+    assert report.manual == [] and report.automatic == {}
+
+
+@pytest.mark.requirement("screen-time-wallet/Mouvements de la semaine dans le compte rendu")
+def test_mouvement_d_une_autre_semaine_absent():
+    wallet = fresh()
+    wallet.adjust(30, datetime(2026, 10, 20, 12), "ancien")  # deux semaines avant le bilan
+    assert wallet.settle(NEXT_MONDAY, SEVEN, [])[0].manual == []
+
+
+@pytest.mark.requirement("screen-time-wallet/Mouvements de la semaine dans le compte rendu")
+def test_plusieurs_lundis_rattrapes_chaque_mouvement_dans_sa_semaine():
+    wallet = fresh()
+    wallet.adjust(30, datetime(2026, 11, 4, 18), "première semaine")
+    first, second = wallet.settle(datetime(2026, 11, 16), SEVEN, [])
+    assert [m.reason for m in first.manual] == ["première semaine"] and second.manual == []
+
+
 # --- Ajustement manuel -----------------------------------------------------------------------------
 
 @pytest.mark.requirement("screen-time-wallet/Ajustement manuel")

@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 
@@ -18,7 +19,10 @@ from .runtime import WalletRuntime, local_now
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SENSOR, Platform.NUMBER, Platform.BUTTON]
+PLATFORMS = [Platform.SENSOR]
+
+# Entités créées par la v0.5.0 puis retirées : (domaine, clé de l'identifiant unique)
+RETIRED_ENTITIES = (("number", "minutes"), ("button", "add_time"), ("button", "remove_time"))
 
 type WalletConfigEntry = ConfigEntry[WalletRuntime]
 
@@ -42,6 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> bo
             _LOGGER.error("État illisible pour %s, entrée non chargée : %s", entry.title, error)
             raise ConfigEntryError(f"État enregistré illisible : {error}") from error
 
+    _remove_retired_entities(hass, entry)
     runtime = WalletRuntime(
         hass, entry, store, wallet, (data or {}).get("source_entity", ""), _load_baselines(data or {})
     )
@@ -60,6 +65,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> bo
     entry.async_on_unload(runtime.async_track_usage())
     await runtime.async_refresh()  # activation de la source et rattrapage des lundis manqués
     return True
+
+
+def _remove_retired_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Supprime du registre les entités des versions précédentes, pour ne pas laisser d'entités indisponibles."""
+    registry = er.async_get(hass)
+    for domain, key in RETIRED_ENTITIES:
+        entity_id = registry.async_get_entity_id(domain, DOMAIN, f"{entry.entry_id}_{key}")
+        if entity_id:
+            registry.async_remove(entity_id)
 
 
 def _load_baselines(data: dict) -> dict[str, Baseline]:

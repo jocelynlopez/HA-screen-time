@@ -84,19 +84,6 @@
       "last_settlement": {
         "name": "Last settlement"
       }
-    },
-    "number": {
-      "minutes": {
-        "name": "Minutes"
-      }
-    },
-    "button": {
-      "add_time": {
-        "name": "Add time"
-      },
-      "remove_time": {
-        "name": "Remove time"
-      }
     }
   },
   "services": {

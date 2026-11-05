@@ -12,7 +12,9 @@ school averages and grades, and debited automatically by the time actually spent
   - a **week credit** derived from the grades of the past week, added to the **grades capital**, which accumulates and
     can go negative.
 - The **available time** is the sum of both. Consumption debits the weekly credit first.
-- A **report** details the calculation every Monday (persistent notification, plus an optional `notify` service).
+- A **report** details the calculation every Monday (persistent notification, plus an optional `notify` service). It
+  also lists the **manual movements of the past week** (date, signed minutes and reason of each adjustment or manual
+  consumption, up to 30 lines) and the time consumed automatically by each sensor, so the balance can be traced.
 
 Without a grades source, the settlement applies the fallback credit (240 min by default). With the **EcoleDirecte
 source** (see below), it uses the real averages and grades. With **screen time sensors** (see below), consumption is
@@ -136,14 +138,19 @@ again (Monday top-up, new grades, an adjustment), it puts them back in their fre
 For each child: *Available time*, *Weekly credit*, *Grades capital* (in minutes) and *Last settlement* (date, initial
 credit, week credit and the 20 latest movements as attributes).
 
-The same device also has **controls** to give or take time by hand, without YAML:
+Giving or taking time by hand is done with a **script that opens an input window** (minutes and a required reason).
+Import the blueprints in one click, then create a script from each one and pick any sensor of the child's wallet:
 
-- **Minutes** (number, 1 to 600 by steps of 5, 15 by default, kept across restarts): the amount used by the buttons.
-- **Add time**: adds that many minutes to the grades capital (same as `screen_time_wallet.adjust`).
-- **Remove time**: consumes that many minutes, weekly credit first (same as `screen_time_wallet.consume`). If the
-  available time reaches 0, the blocking switches react as usual: it is the quickest way to test the blocking.
+- Add time (`screen_time_wallet.adjust`): [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjocelynlopez%2FHA-screen-time%2Fblob%2Fmain%2Fblueprints%2Fscript%2Fscreen_time_wallet%2Fadd_time.yaml)
+- Remove time (`screen_time_wallet.consume`): [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjocelynlopez%2FHA-screen-time%2Fblob%2Fmain%2Fblueprints%2Fscript%2Fscreen_time_wallet%2Fremove_time.yaml)
 
-Both buttons write a journal line with the reason "button". For a one-minute precision use the actions below.
+*Settings → Automations & scenes → Blueprints → Import blueprint*, then *Scripts → Add script → Use a blueprint*. When
+the script is launched from the dashboard, Home Assistant asks for the minutes and the reason. The reason is shown in the
+Monday report (see below). If the import does not work, create a script by hand with the `fields` `minutes` and `reason`
+calling the same actions.
+
+> The "Minutes" number entity and the "Add time" / "Remove time" buttons of v0.5.0 were **removed**: the entities that
+> remain in the registry are deleted at startup. Remove them from your dashboards if you had added them.
 
 ## Services
 
@@ -190,7 +197,9 @@ l'ordinateur.
   - un **crédit de semaine** issu de la moyenne des notes de la semaine écoulée, ajouté au **capital notes**, qui se
     cumule et peut être négatif.
 - Le **temps disponible** est la somme des deux. La consommation débite d'abord le crédit hebdomadaire.
-- Un **rapport** détaille le calcul chaque lundi (notification persistante, et service `notify` optionnel).
+- Un **rapport** détaille le calcul chaque lundi (notification persistante, et service `notify` optionnel). Il liste aussi
+  les **mouvements manuels de la semaine écoulée** (date, minutes signées et raison de chaque ajustement ou consommation
+  manuelle, 30 lignes au plus) et le temps consommé automatiquement par chaque capteur, pour pouvoir retracer le solde.
 
 Sans source de notes, le bilan applique le crédit de repli (240 min par défaut). Avec la **source EcoleDirecte**
 (voir plus bas), il utilise les vraies moyennes et les vraies notes. Avec les **capteurs de temps d'écran** (voir plus
@@ -317,17 +326,21 @@ quand il redevient positif (recharge du lundi, nouvelles notes, ajustement), il 
 Pour chaque enfant : *Temps disponible*, *Crédit hebdomadaire*, *Capital notes* (en minutes) et *Dernier bilan*
 (date, crédit initial, crédit de semaine et 20 derniers mouvements en attributs).
 
-Le même appareil porte aussi des **commandes** pour donner ou retirer du temps à la main, sans YAML :
+Donner ou retirer du temps à la main se fait avec un **script qui ouvre une fenêtre de saisie** (minutes et raison
+obligatoire). Importez les blueprints en un clic, puis créez un script depuis chacun en choisissant n'importe quel capteur
+du portefeuille de l'enfant :
 
-- **Minutes** (nombre, de 1 à 600 par pas de 5, 15 par défaut, conservé au redémarrage) : la quantité utilisée par les
-  boutons.
-- **Ajouter du temps** : ajoute ce nombre de minutes au capital notes (comme `screen_time_wallet.adjust`).
-- **Retirer du temps** : consomme ce nombre de minutes, crédit hebdomadaire d'abord (comme
-  `screen_time_wallet.consume`). Si le temps disponible tombe à 0, les interrupteurs de blocage réagissent comme
-  d'habitude : c'est le moyen le plus rapide de tester le blocage.
+- Ajouter du temps (`screen_time_wallet.adjust`) : [![Importer le blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjocelynlopez%2FHA-screen-time%2Fblob%2Fmain%2Fblueprints%2Fscript%2Fscreen_time_wallet%2Fadd_time.yaml)
+- Retirer du temps (`screen_time_wallet.consume`) : [![Importer le blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjocelynlopez%2FHA-screen-time%2Fblob%2Fmain%2Fblueprints%2Fscript%2Fscreen_time_wallet%2Fremove_time.yaml)
 
-Les deux boutons écrivent une ligne du journal avec le motif « bouton ». Pour ajuster à la minute près, utiliser les
-actions ci-dessous.
+*Paramètres → Automatisations et scènes → Blueprints → Importer un blueprint*, puis *Scripts → Ajouter un script →
+Utiliser un blueprint*. Quand le script est lancé depuis le tableau de bord, Home Assistant demande les minutes et la
+raison. La raison figure dans le rapport du lundi (voir plus bas). Si l'import ne fonctionne pas, créez un script à la
+main avec les champs `minutes` et `reason` qui appelle les mêmes actions.
+
+> L'entité numérique « Minutes » et les boutons « Ajouter du temps » / « Retirer du temps » de la v0.5.0 ont été
+> **retirés** : les entités restées dans le registre sont supprimées au démarrage. Retirez-les de vos tableaux de bord si
+> vous les y aviez ajoutées.
 
 ## Services
 

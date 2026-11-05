@@ -11,6 +11,7 @@ from .grades import Grade, InvalidGradeError, key_from_json, key_to_json
 
 STATE_VERSION = 1
 MAX_MOVEMENTS = 200
+AUTO = "auto"  # origine (champ detail) des consommations automatiques
 
 
 class InvalidConsumptionError(ValueError):
@@ -78,6 +79,8 @@ class Report:
     fallback: bool = False
     notes_capital: int = 0  # après le bilan
     available: int = 0  # après le bilan
+    manual: list["Movement"] = field(default_factory=list)  # ajustements et consommations manuels de la semaine
+    automatic: dict[str, int] = field(default_factory=dict)  # minutes consommées automatiquement, par motif
 
 
 @dataclass
@@ -134,7 +137,9 @@ class Wallet:
             self.notes_capital += details.credit
             self._record(Movement("bilan", monday, weekly_change, details.credit, "",
                                   {"initial_credit": initial, "week_credit": details.credit}))
-            reports.append(self._report(monday, initial, details, week_notes, pending, step == 1))
+            report = self._report(monday, initial, details, week_notes, pending, step == 1)
+            report.manual, report.automatic = self._week_movements(monday)
+            reports.append(report)
         self.last_settlement += timedelta(weeks=weeks)
         self.seen_keys |= pending.seen
         return reports
@@ -142,8 +147,8 @@ class Wallet:
     def consume(self, minutes: int, now: datetime | None = None, reason: str = "", merge: bool = False) -> None:
         """Débite d'abord le crédit hebdomadaire, puis le capital notes (qui peut devenir négatif).
 
-        Avec `merge`, les minutes s'ajoutent au dernier mouvement du journal s'il s'agit d'une consommation de même
-        motif datée du même jour, au lieu d'ajouter une ligne.
+        Avec `merge` (consommation automatique), le mouvement est marqué automatique et les minutes s'ajoutent au dernier
+        mouvement du journal s'il est lui aussi automatique, de même motif et du même jour, au lieu d'ajouter une ligne.
         """
         if minutes <= 0:
             raise InvalidConsumptionError(f"consommation invalide : {minutes}")
@@ -152,14 +157,15 @@ class Wallet:
         self.notes_capital -= minutes - from_weekly
         last = self.movements[-1] if self.movements else None
         if (
-            merge and last and last.kind == "consommation" and last.reason == reason
-            and now is not None and last.when is not None and last.when.date() == now.date()
+            merge and last and last.kind == "consommation" and last.detail.get("origin") == AUTO
+            and last.reason == reason and now is not None and last.when is not None and last.when.date() == now.date()
         ):
             last.weekly_change -= from_weekly
             last.capital_change -= minutes - from_weekly
             last.when = now
             return
-        self._record(Movement("consommation", now, -from_weekly, -(minutes - from_weekly), reason))
+        self._record(Movement("consommation", now, -from_weekly, -(minutes - from_weekly), reason,
+                              {"origin": AUTO} if merge else {}))
 
     def adjust(self, minutes: int, now: datetime | None = None, reason: str = "") -> None:
         """Ajoute au capital notes un nombre de minutes non nul, positif ou négatif."""
@@ -202,6 +208,22 @@ class Wallet:
             )
         except (KeyError, TypeError, ValueError) as error:
             raise WalletStateError(f"état illisible : {error}") from error
+
+    def _week_movements(self, monday: datetime) -> tuple[list[Movement], dict[str, int]]:
+        """Mouvements manuels (chronologiques) et total automatique par motif de la semaine finissant ce lundi.
+
+        La semaine va du lundi précédent (exclu) à ce lundi (inclus), d'après la date de chaque mouvement."""
+        start = monday - timedelta(weeks=1)
+        manual, automatic = [], {}
+        for movement in self.movements:
+            if movement.when is None or not start < movement.when <= monday:
+                continue
+            if movement.kind == "consommation" and movement.detail.get("origin") == AUTO:
+                total = -(movement.weekly_change + movement.capital_change)
+                automatic[movement.reason] = automatic.get(movement.reason, 0) + total
+            elif movement.kind in ("consommation", "ajustement"):
+                manual.append(movement)
+        return sorted(manual, key=lambda m: m.when), automatic
 
     def _record(self, movement: Movement) -> None:
         self.movements.append(movement)
