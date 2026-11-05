@@ -224,7 +224,7 @@ Le système SHALL créer une notification persistante de HA, propre à chaque po
 - **THEN** aucune notification d'anomalie n'est créée
 
 ### Requirement: Rapport hebdomadaire
-Le système SHALL, à l'issue de chaque bilan et si l'option est activée, publier un rapport simple pour l'enfant : le titre « Ton temps de la semaine (lundi JJ/MM) », le temps reporté des semaines précédentes (s'il est non nul), chaque note comptée avec ses minutes signées, le complément de la moyenne générale avec la moyenne entre parenthèses, puis le temps disponible. Le détail technique du calcul n'y figure pas. Notification persistante distincte de celle des anomalies, envoyée aussi au service configuré.
+Le système SHALL, à l'issue de chaque bilan et si l'option est activée, publier un rapport simple pour l'enfant : « Ton temps de la semaine (lundi JJ/MM) », le temps reporté (s'il est non nul), chaque note comptée avec ses minutes signées, le complément de la moyenne générale (moyenne entre parenthèses), puis le temps disponible, sans détail technique. Notification persistante distincte de celle des anomalies, envoyée aussi au service configuré.
 
 #### Scenario: Contenu du rapport
 - **GIVEN** un bilan avec sept moyennes, un capital de 0 et les notes arts plastiques 9/10 et français 7/20
