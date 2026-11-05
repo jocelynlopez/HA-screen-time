@@ -13,6 +13,7 @@ from .const import (
     OPT_NOTES_SHARE,
     OPT_NOTIFY_SERVICE,
     OPT_PIVOT,
+    OPT_USAGE_ENTITIES,
     OPT_WEEKLY_REPORT,
 )
 from .engine.config import DEFAULT_MULTIPLIERS, Config, to_fraction
@@ -28,6 +29,7 @@ DEFAULT_OPTIONS = {
     OPT_WEEKLY_REPORT: True,
     OPT_NOTIFY_SERVICE: "",
     OPT_NOTES_ENTITY: "",
+    OPT_USAGE_ENTITIES: [],
     OPT_MULTIPLIERS: {name: float(value) for name, value in DEFAULT_MULTIPLIERS.items()},
 }
 
@@ -36,6 +38,7 @@ def with_defaults(options: Mapping) -> dict:
     """Options complétées par les valeurs par défaut."""
     merged = {**DEFAULT_OPTIONS, **options}
     merged[OPT_MULTIPLIERS] = dict(merged[OPT_MULTIPLIERS])
+    merged[OPT_USAGE_ENTITIES] = list(merged[OPT_USAGE_ENTITIES])
     return merged
 
 

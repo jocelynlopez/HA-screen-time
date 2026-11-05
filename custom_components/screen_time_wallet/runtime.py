@@ -6,10 +6,11 @@ from datetime import datetime, timedelta
 
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -18,11 +19,13 @@ from .const import (
     MAX_RETRIES,
     OPT_NOTES_ENTITY,
     OPT_NOTIFY_SERVICE,
+    OPT_USAGE_ENTITIES,
     OPT_WEEKLY_REPORT,
     RETRY_DELAY_MINUTES,
     SIGNAL_UPDATE,
 )
 from .ecole_directe_source import EcoleDirecteSource
+from .engine.usage import Baseline, consumed_since, reading_minutes
 from .engine.wallet import Report, Wallet
 from .options import with_defaults
 from .report import render_anomalies, render_report, render_source_down
@@ -40,7 +43,13 @@ class WalletRuntime:
     """Détient le portefeuille d'une entrée ; toute modification est sérialisée puis enregistrée."""
 
     def __init__(
-        self, hass: HomeAssistant, entry: ConfigEntry, store: Store, wallet: Wallet, source_entity: str = ""
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        store: Store,
+        wallet: Wallet,
+        source_entity: str = "",
+        baselines: dict[str, Baseline] | None = None,
     ) -> None:
         self.hass = hass
         self.entry = entry
@@ -49,6 +58,7 @@ class WalletRuntime:
         self.lock = asyncio.Lock()
         self.source: GradesSource = NullSource()
         self.source_entity = source_entity  # capteur de notes déjà activé (enregistré avec l'état)
+        self.baselines: dict[str, Baseline] = dict(baselines or {})  # relevé de référence de chaque capteur
         self._retries = 0
         self._cancel_retry = None
         self.configure_source()
@@ -63,11 +73,21 @@ class WalletRuntime:
         return with_defaults(self.entry.options)[OPT_NOTES_ENTITY]
 
     @property
+    def usage_entities(self) -> list[str]:
+        return with_defaults(self.entry.options)[OPT_USAGE_ENTITIES]
+
+    @property
     def signal(self) -> str:
         return SIGNAL_UPDATE.format(entry_id=self.entry.entry_id)
 
     async def async_save(self) -> None:
-        await self.store.async_save({**self.wallet.to_dict(), "source_entity": self.source_entity})
+        await self.store.async_save(
+            {
+                **self.wallet.to_dict(),
+                "source_entity": self.source_entity,
+                "usage_baselines": {entity: b.to_json() for entity, b in self.baselines.items()},
+            }
+        )
 
     def async_notify_entities(self) -> None:
         async_dispatcher_send(self.hass, self.signal)
@@ -110,7 +130,58 @@ class WalletRuntime:
             self._retries = 0
         else:
             self._schedule_retry()
+        await self.async_sync_usage()  # après le bilan : l'usage d'un lundi manqué ne doit pas être effacé par lui
         return ok
+
+    @callback
+    def async_track_usage(self):
+        """Suit les changements d'état des capteurs de temps d'écran choisis ; renvoie la fonction d'arrêt."""
+        entities = self.usage_entities
+        if not entities:
+            return lambda: None
+
+        async def _changed(event: Event) -> None:
+            await self.async_sync_usage(event.data["entity_id"])
+
+        return async_track_state_change_event(self.hass, entities, _changed)
+
+    def _read_usage(self, entity: str):
+        """(minutes, jour, nom) du capteur, ou None s'il est absent, indisponible ou inconnu."""
+        state = self.hass.states.get(entity)
+        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return None
+        minutes = reading_minutes(state.state, state.attributes.get("total_seconds"))
+        return minutes, state.attributes.get("date"), state.attributes.get("friendly_name") or entity
+
+    async def async_sync_usage(self, only: str | None = None) -> None:
+        """Consomme la différence de chaque capteur choisi (ou du seul `only`) depuis son relevé de référence.
+
+        Les références des capteurs retirés des options sont oubliées. Rien n'est consommé tant qu'un bilan est dû."""
+        now = local_now()
+        async with self.lock:
+            entities = self.usage_entities
+            changed = False
+            for stale in set(self.baselines) - set(entities):
+                del self.baselines[stale]
+                changed = True
+            if self.wallet.pending_settlements(now) == 0:
+                for entity in entities:
+                    reading = self._read_usage(entity) if only in (None, entity) else None
+                    if reading is None:
+                        continue
+                    minutes, day, name = reading
+                    previous = self.baselines.get(entity)
+                    consumed, baseline = consumed_since(previous, minutes, day)
+                    if baseline is not None and baseline != previous:
+                        self.baselines[entity] = baseline
+                        changed = True
+                    if consumed > 0:
+                        self.wallet.consume(consumed, now, name, merge=True)
+                        changed = True
+            if changed:
+                await self.async_save()
+        if changed:
+            self.async_notify_entities()
 
     def reset_retries(self) -> None:
         self._retries = 0

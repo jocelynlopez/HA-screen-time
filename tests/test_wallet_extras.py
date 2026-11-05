@@ -62,6 +62,61 @@ def test_journal_borne_a_200_mouvements():
     assert wallet.movements[0].reason == "50" and wallet.movements[-1].reason == "249"
 
 
+# --- Regroupement des consommations automatiques ----------------------------------------------------
+
+@pytest.mark.requirement("screen-time-wallet/Regroupement des consommations automatiques")
+def test_trois_releves_dans_la_journee():
+    wallet = fresh()
+    for minutes, hour in ((5, 9), (3, 12), (7, 18)):
+        wallet.consume(minutes, datetime(2026, 11, 4, hour), "PC de Mael", merge=True)
+    assert len(wallet.movements) == 1
+    assert wallet.movements[0] == Movement("consommation", datetime(2026, 11, 4, 18), -15, 0, "PC de Mael")
+    assert wallet.weekly_credit == 213
+
+
+@pytest.mark.requirement("screen-time-wallet/Regroupement des consommations automatiques")
+def test_regroupement_a_cheval_sur_le_credit_et_le_capital():
+    wallet = Wallet(weekly_credit=10, notes_capital=0, last_settlement=MONDAY)
+    wallet.consume(8, datetime(2026, 11, 4, 9), "PC", merge=True)
+    wallet.consume(7, datetime(2026, 11, 4, 10), "PC", merge=True)
+    assert len(wallet.movements) == 1
+    assert (wallet.movements[0].weekly_change, wallet.movements[0].capital_change) == (-10, -5)
+    assert (wallet.weekly_credit, wallet.notes_capital) == (0, -5)
+
+
+@pytest.mark.requirement("screen-time-wallet/Regroupement des consommations automatiques")
+def test_jour_different_nouveau_mouvement():
+    wallet = fresh()
+    wallet.consume(5, datetime(2026, 11, 4, 22), "PC", merge=True)
+    wallet.consume(5, datetime(2026, 11, 5, 8), "PC", merge=True)
+    assert len(wallet.movements) == 2
+
+
+@pytest.mark.requirement("screen-time-wallet/Regroupement des consommations automatiques")
+def test_motif_different_nouveau_mouvement():
+    wallet = fresh()
+    wallet.consume(5, datetime(2026, 11, 4, 9), "PC", merge=True)
+    wallet.consume(5, datetime(2026, 11, 4, 10), "Tablette", merge=True)
+    assert [m.reason for m in wallet.movements] == ["PC", "Tablette"]
+
+
+@pytest.mark.requirement("screen-time-wallet/Regroupement des consommations automatiques")
+def test_consommation_manuelle_a_son_propre_mouvement():
+    wallet = fresh()
+    wallet.consume(5, datetime(2026, 11, 4, 9), "PC", merge=True)
+    wallet.consume(10, datetime(2026, 11, 4, 10), "PC")
+    assert [m.weekly_change for m in wallet.movements] == [-5, -10]
+
+
+@pytest.mark.requirement("screen-time-wallet/Regroupement des consommations automatiques")
+def test_apres_un_autre_mouvement_nouveau_mouvement():
+    wallet = fresh()
+    wallet.consume(5, datetime(2026, 11, 4, 9), "PC", merge=True)
+    wallet.adjust(10, datetime(2026, 11, 4, 10), "bonus")
+    wallet.consume(5, datetime(2026, 11, 4, 11), "PC", merge=True)
+    assert [m.kind for m in wallet.movements] == ["consommation", "ajustement", "consommation"]
+
+
 # --- Ajustement manuel -----------------------------------------------------------------------------
 
 @pytest.mark.requirement("screen-time-wallet/Ajustement manuel")

@@ -38,7 +38,8 @@
           "exclude_non_significant": "Ignore non-significant grades",
           "weekly_report": "Publish a report every Monday",
           "notify_service": "Notification service (e.g. notify.mobile_app_phone)",
-          "notes_entity": "EcoleDirecte notes sensor (optional)"
+          "notes_entity": "EcoleDirecte notes sensor (optional)",
+          "usage_entities": "Screen time sensors (optional)"
         }
       },
       "matieres": {

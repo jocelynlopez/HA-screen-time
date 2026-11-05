@@ -139,13 +139,26 @@ class Wallet:
         self.seen_keys |= pending.seen
         return reports
 
-    def consume(self, minutes: int, now: datetime | None = None, reason: str = "") -> None:
-        """Débite d'abord le crédit hebdomadaire, puis le capital notes (qui peut devenir négatif)."""
+    def consume(self, minutes: int, now: datetime | None = None, reason: str = "", merge: bool = False) -> None:
+        """Débite d'abord le crédit hebdomadaire, puis le capital notes (qui peut devenir négatif).
+
+        Avec `merge`, les minutes s'ajoutent au dernier mouvement du journal s'il s'agit d'une consommation de même
+        motif datée du même jour, au lieu d'ajouter une ligne.
+        """
         if minutes <= 0:
             raise InvalidConsumptionError(f"consommation invalide : {minutes}")
         from_weekly = min(minutes, self.weekly_credit)
         self.weekly_credit -= from_weekly
         self.notes_capital -= minutes - from_weekly
+        last = self.movements[-1] if self.movements else None
+        if (
+            merge and last and last.kind == "consommation" and last.reason == reason
+            and now is not None and last.when is not None and last.when.date() == now.date()
+        ):
+            last.weekly_change -= from_weekly
+            last.capital_change -= minutes - from_weekly
+            last.when = now
+            return
         self._record(Movement("consommation", now, -from_weekly, -(minutes - from_weekly), reason))
 
     def adjust(self, minutes: int, now: datetime | None = None, reason: str = "") -> None:

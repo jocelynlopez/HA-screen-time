@@ -11,6 +11,7 @@ from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, STORAGE_VERSION
 from .engine.config import ConfigError
+from .engine.usage import Baseline
 from .engine.wallet import Wallet, WalletStateError
 from .options import build_config
 from .runtime import WalletRuntime, local_now
@@ -41,7 +42,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> bo
             _LOGGER.error("État illisible pour %s, entrée non chargée : %s", entry.title, error)
             raise ConfigEntryError(f"État enregistré illisible : {error}") from error
 
-    runtime = WalletRuntime(hass, entry, store, wallet, (data or {}).get("source_entity", ""))
+    runtime = WalletRuntime(
+        hass, entry, store, wallet, (data or {}).get("source_entity", ""), _load_baselines(data or {})
+    )
     if is_new:
         await runtime.async_save()
     entry.runtime_data = runtime
@@ -54,8 +57,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> bo
 
     entry.async_on_unload(async_track_time_change(hass, _daily, hour=0, minute=0, second=0))
     entry.async_on_unload(runtime.async_cancel_retry)
+    entry.async_on_unload(runtime.async_track_usage())
     await runtime.async_refresh()  # activation de la source et rattrapage des lundis manqués
     return True
+
+
+def _load_baselines(data: dict) -> dict[str, Baseline]:
+    """Relevés de référence enregistrés ; une entrée illisible est ignorée (le capteur repart d'un nouveau relevé)."""
+    baselines = {}
+    for entity, raw in (data.get("usage_baselines") or {}).items():
+        try:
+            baselines[entity] = Baseline.from_json(raw)
+        except (KeyError, TypeError, ValueError, ZeroDivisionError):
+            _LOGGER.warning("Relevé de référence illisible pour %s, ignoré", entity)
+    return baselines
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: WalletConfigEntry) -> bool:

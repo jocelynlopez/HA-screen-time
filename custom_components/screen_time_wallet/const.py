@@ -14,6 +14,7 @@ OPT_EXCLUDE_NS = "exclude_non_significant"
 OPT_WEEKLY_REPORT = "weekly_report"
 OPT_NOTIFY_SERVICE = "notify_service"
 OPT_NOTES_ENTITY = "notes_entity"
+OPT_USAGE_ENTITIES = "usage_entities"
 OPT_MULTIPLIERS = "multipliers"
 
 RETRY_DELAY_MINUTES = 5

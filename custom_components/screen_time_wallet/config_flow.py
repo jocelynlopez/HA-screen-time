@@ -20,6 +20,7 @@ from .const import (
     OPT_NOTES_SHARE,
     OPT_NOTIFY_SERVICE,
     OPT_PIVOT,
+    OPT_USAGE_ENTITIES,
     OPT_WEEKLY_REPORT,
 )
 from .engine.config import ConfigError, normalize_subject
@@ -66,10 +67,15 @@ class ScreenTimeWalletOptionsFlow(OptionsFlow):
             # un champ d'entité vidé est absent des données reçues : on le lit comme « aucun capteur »
             notes_entity = user_input.get(OPT_NOTES_ENTITY) or ""
             candidate[OPT_NOTES_ENTITY] = notes_entity
+            # idem pour les capteurs de temps d'écran : aucun capteur
+            usage_entities = list(dict.fromkeys(user_input.get(OPT_USAGE_ENTITIES) or []))
+            candidate[OPT_USAGE_ENTITIES] = usage_entities
             if service and not NOTIFY_SERVICE.match(service):
                 errors[OPT_NOTIFY_SERVICE] = "invalid_notify_service"
             elif notes_entity and not self._entity_exists(notes_entity):
                 errors[OPT_NOTES_ENTITY] = "unknown_entity"
+            elif not all(self._entity_exists(entity) for entity in usage_entities):
+                errors[OPT_USAGE_ENTITIES] = "unknown_entity"
             else:
                 try:
                     build_config(candidate)
@@ -104,6 +110,9 @@ class ScreenTimeWalletOptionsFlow(OptionsFlow):
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor", integration="ecole_directe")
                 ),
+                vol.Optional(
+                    OPT_USAGE_ENTITIES, description={"suggested_value": current[OPT_USAGE_ENTITIES] or None}
+                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", multiple=True)),
             }
         )
         return self.async_show_form(step_id="parametres", data_schema=schema, errors=errors)

@@ -107,7 +107,7 @@ async def test_etat_conserve_apres_modification(hass, loaded):
 async def test_valeurs_par_defaut_affichees(hass, loaded):
     form = await open_step(hass, loaded, "parametres")
     schema = {str(key): key for key in form["data_schema"].schema}
-    defaults = {name: key.default() for name, key in schema.items() if name != "notes_entity"}
+    defaults = {name: key.default() for name, key in schema.items() if name not in ("notes_entity", "usage_entities")}
     assert defaults == PARAMS
     assert schema["notes_entity"].description["suggested_value"] is None  # aucun capteur de notes
     assert DEFAULT_OPTIONS["weekly_report"] is True and DEFAULT_OPTIONS["notify_service"] == ""
@@ -174,3 +174,42 @@ async def test_retour_sans_source_quand_le_capteur_est_vide(hass, loaded):
     await save_params(hass, loaded, notes_entity="sensor.ed_mael_lopez_notes")
     await save_params(hass, loaded)  # champ vidé : absent des données reçues
     assert loaded.options["notes_entity"] == "" and loaded.runtime_data.notes_entity == ""
+
+
+# --- Capteurs de temps d'écran (option) -------------------------------------------------------------------
+
+@pytest.mark.requirement("ha-integration/Capteurs de temps d'écran")
+async def test_choix_de_capteurs_de_temps_d_ecran(hass, loaded):
+    hass.states.async_set("sensor.pc_mael_screen_time", "0", {"total_seconds": 0})
+    hass.states.async_set("sensor.tablette_screen_time", "0")
+    sensors = ["sensor.pc_mael_screen_time", "sensor.tablette_screen_time"]
+    result = await save_params(hass, loaded, usage_entities=sensors)
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert loaded.options["usage_entities"] == sensors
+
+
+@pytest.mark.requirement("ha-integration/Capteurs de temps d'écran")
+async def test_capteur_de_temps_d_ecran_inexistant_refuse(hass, loaded):
+    hass.states.async_set("sensor.pc_mael_screen_time", "0")
+    result = await save_params(
+        hass, loaded, usage_entities=["sensor.pc_mael_screen_time", "sensor.n_existe_pas"]
+    )
+    assert result["type"] is FlowResultType.FORM and result["errors"] == {"usage_entities": "unknown_entity"}
+    assert loaded.options.get("usage_entities", []) == []
+
+
+@pytest.mark.requirement("ha-integration/Capteurs de temps d'écran")
+async def test_aucun_capteur_de_temps_d_ecran_par_defaut(hass, loaded):
+    assert DEFAULT_OPTIONS["usage_entities"] == []
+    assert loaded.runtime_data.usage_entities == []
+    form = await open_step(hass, loaded, "parametres")
+    schema = {str(key): key for key in form["data_schema"].schema}
+    assert schema["usage_entities"].description["suggested_value"] is None
+
+
+@pytest.mark.requirement("ha-integration/Capteurs de temps d'écran")
+async def test_champ_vide_signifie_aucun_capteur(hass, loaded):
+    hass.states.async_set("sensor.pc_mael_screen_time", "0")
+    await save_params(hass, loaded, usage_entities=["sensor.pc_mael_screen_time"])
+    await save_params(hass, loaded)  # champ vidé : absent des données reçues
+    assert loaded.options["usage_entities"] == [] and loaded.runtime_data.usage_entities == []

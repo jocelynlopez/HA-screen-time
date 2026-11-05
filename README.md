@@ -31,7 +31,7 @@ l'enfant (une entrée par enfant).
 
 - **Paramètres de calcul** : temps maximal par semaine (heures, pour 20/20 partout), part des notes (%), note pivot,
   poids minimal, nombre minimal de matières, crédit de repli, notes non significatives, rapport hebdomadaire, service de
-  notification.
+  notification, capteurs de temps d'écran.
 - **Matières et multiplicateurs** : ajouter, modifier ou supprimer une matière (nom tel qu'écrit par EcoleDirecte).
 
 Une matière inconnue ou une note rejetée déclenche une notification.
@@ -59,6 +59,34 @@ hebdomadaire est calculé sur les moyennes actuelles. Seules les notes saisies e
 - Si la source est indisponible quand un bilan est dû (démarrage de Home Assistant, capteur absent), le bilan est
   retenté 3 fois à 5 minutes d'intervalle, puis chaque nuit ; une notification persistante signale la panne et disparaît
   au bilan réussi.
+
+## Capteurs de temps d'écran
+
+Le portefeuille peut débiter automatiquement le temps réellement utilisé, à partir des capteurs de l'intégration
+[`microsoft_family_safety`](https://github.com/noiwid/HAFamilySafety) (par exemple `sensor.pc_mael_screen_time`). Il
+ne l'installe ni ne la configure.
+
+1. Installer et configurer `microsoft_family_safety`.
+2. Dans les options du portefeuille, *Paramètres de calcul*, choisir un ou plusieurs **capteurs de temps d'écran** :
+   prendre celui de l'**appareil** (le PC), pas le total de l'enfant, qui additionne aussi les autres appareils.
+
+Fonctionnement :
+
+- Le relevé d'un capteur est le temps utilisé dans la journée : son attribut `total_seconds` divisé par 60, ou à défaut
+  son état en minutes.
+- À chaque nouveau relevé, la **différence avec le relevé de référence** est consommée (crédit hebdomadaire d'abord,
+  puis capital notes). Les fractions de minute sont reportées au relevé suivant ; plusieurs capteurs s'additionnent.
+- Au **premier relevé** d'un capteur (choix dans les options), rien n'est facturé : l'usage déjà écoulé ne compte pas.
+- Le compteur repart de zéro chaque nuit. Un **changement de jour** (attribut `date`) ou, à défaut, une **baisse** du
+  compteur vaut remise à zéro : le nouveau relevé est alors la consommation depuis la remise à zéro.
+- Les relevés de référence sont enregistrés avec l'état : au redémarrage, la différence survenue pendant l'arrêt est
+  consommée, sans perdre ni doubler de minute.
+- Les consommations automatiques d'un même capteur dans la même journée forment **une seule ligne du journal**.
+- Un capteur « indisponible » ou « inconnu » est ignoré.
+
+Limites : le temps disponible suit le rythme du capteur (5 minutes par défaut) ; l'usage entre le dernier relevé de la
+veille et minuit n'est pas compté ; un relevé numérique erroné (un 0 isolé) serait compté comme un nouvel usage au retour
+de la vraie valeur : le journal le montre et le service `screen_time_wallet.adjust` le corrige.
 
 ## Entités
 
