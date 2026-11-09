@@ -127,8 +127,27 @@ async def test_releve_indisponible_ignore(hass, freezer, unusable):
 async def test_remise_a_zero_du_compteur(hass, freezer):
     set_usage(hass, PC, 190)
     entry, runtime = await start_with(hass, freezer, [PC])
-    await set_and_wait(hass, PC, 12)  # même jour : une baisse vaut remise à zéro
-    assert runtime.wallet.weekly_credit == 240 - 12
+    await set_and_wait(hass, PC, 12)  # même jour : la baisse attend un second relevé
+    assert runtime.wallet.weekly_credit == 240
+    await set_and_wait(hass, PC, 14)
+    assert runtime.wallet.weekly_credit == 240 - 14
+
+
+@pytest.mark.requirement("ha-integration/Consommation automatique")
+async def test_non_regression_decompte_de_mael(hass, freezer):
+    """Vendredi 40 min ; minuit : date du lendemain avec total périmé ; samedi : relevé bas passager."""
+    set_usage(hass, PC, 0, day=D1)
+    entry, runtime = await start_with(hass, freezer, [PC])
+    await set_and_wait(hass, PC, 40, day=D1)
+    assert runtime.wallet.weekly_credit == 240 - 40
+    await set_and_wait(hass, PC, 40, day=D2)  # minuit : date changée, minutes de la veille
+    assert runtime.wallet.weekly_credit == 240 - 40
+    await set_and_wait(hass, PC, 0, day=D2)
+    await set_and_wait(hass, PC, 46, day=D2)
+    assert runtime.wallet.weekly_credit == 240 - 40 - 46
+    await set_and_wait(hass, PC, 36, day=D2)  # relevé transitoirement bas
+    await set_and_wait(hass, PC, 46, day=D2)
+    assert runtime.wallet.weekly_credit == 240 - 40 - 46
 
 
 @pytest.mark.requirement("ha-integration/Consommation automatique")

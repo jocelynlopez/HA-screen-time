@@ -53,10 +53,10 @@ def test_aucun_mouvement_pas_de_section():
     assert "Mouvements manuels" not in message and "Consommation automatique" not in message
 
 
-@pytest.mark.requirement("ha-integration/Mouvements manuels dans le rapport")
-def test_liste_limitee_a_trente_lignes():
+@pytest.mark.requirement("screen-time-wallet/Mouvements de la semaine dans le compte rendu")
+def test_tous_les_mouvements_sont_listes():
     wallet = Wallet.create(MONDAY, {})
-    for minute in range(35):
+    for minute in range(45):
         wallet.adjust(1, datetime(2026, 11, 4, 8, minute), f"geste {minute}")
     message = render(wallet)
-    assert message.count("• 04/11") == 30 and "… et 5 autre(s)" in message
+    assert message.count("• 04/11") == 45 and "autre(s)" not in message and "more" not in message

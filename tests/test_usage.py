@@ -79,8 +79,44 @@ def test_meme_jour():
 
 
 @pytest.mark.requirement("screen-time-usage/Remise à zéro du compteur")
-def test_baisse_le_meme_jour_vaut_remise_a_zero():
-    assert consumed_since(base(190, D1), 12, D1)[0] == 12
+def test_baisse_le_meme_jour_confirmee_par_un_second_releve():
+    consumed, ref = consumed_since(base(190, D1), 12, D1)
+    assert (consumed, ref) == (0, Baseline(Fraction(190), D1, True))
+    consumed, ref = consumed_since(ref, 14, D1)
+    assert (consumed, ref) == (14, Baseline(Fraction(14), D1))
+
+
+@pytest.mark.requirement("screen-time-usage/Remise à zéro du compteur")
+def test_non_regression_baisse_passagere_46_36_46():
+    """Samedi 07/11 : un relevé transitoirement bas était recompté (−36 min)."""
+    consumed, ref = consumed_since(base(46, D1), 36, D1)
+    assert consumed == 0
+    consumed, ref = consumed_since(ref, 46, D1)
+    assert (consumed, ref) == (0, Baseline(Fraction(46), D1))
+
+
+@pytest.mark.requirement("screen-time-usage/Remise à zéro du compteur")
+def test_non_regression_releve_perime_a_minuit():
+    """Samedi 00h00 : la date change avant les minutes, le total de la veille était recompté (−40 min)."""
+    consumed, ref = consumed_since(base(40, D1), 40, D2)
+    assert (consumed, ref) == (0, Baseline(Fraction(40), D2, True))
+    consumed, ref = consumed_since(ref, 0, D2)
+    assert (consumed, ref) == (0, Baseline(Fraction(0), D2))
+
+
+@pytest.mark.requirement("screen-time-usage/Remise à zéro du compteur")
+def test_remise_a_zero_apres_releve_perime():
+    _, ref = consumed_since(base(40, D1), 40, D2)
+    consumed, ref = consumed_since(ref, 3, D2)
+    assert (consumed, ref) == (3, Baseline(Fraction(3), D2))
+
+
+@pytest.mark.requirement("screen-time-usage/Remise à zéro du compteur")
+def test_serialisation_du_doute():
+    assert "suspect" not in base(5, D1).to_json()
+    doubtful = Baseline(Fraction(5), D1, True)
+    assert Baseline.from_json(doubtful.to_json()) == doubtful
+    assert Baseline.from_json({"minutes": "5/1", "date": D1}) == base(5, D1)
 
 
 @pytest.mark.requirement("screen-time-usage/Remise à zéro du compteur")

@@ -19,7 +19,6 @@ TEXTS = {
         "totals": "Capital notes : {capital} min · Temps disponible : {available} min",
         "manual_header": "Mouvements manuels de la semaine :",
         "manual_line": "• {date} · {minutes} min · {reason}",
-        "manual_more": "… et {count} autre(s)",
         "no_reason": "sans motif",
         "automatic_header": "Consommation automatique :",
         "automatic_line": "• {reason} : {minutes} min",
@@ -49,7 +48,6 @@ TEXTS = {
         "totals": "Notes capital: {capital} min · Available time: {available} min",
         "manual_header": "Manual movements this week:",
         "manual_line": "• {date} · {minutes} min · {reason}",
-        "manual_more": "… and {count} more",
         "no_reason": "no reason",
         "automatic_header": "Automatic consumption:",
         "automatic_line": "• {reason}: {minutes} min",
@@ -87,9 +85,6 @@ def _date(moment, language: str) -> str:
 
 def _date_time(moment, language: str) -> str:
     return moment.strftime("%d/%m %H:%M") if language == "fr" else moment.strftime("%m-%d %H:%M")
-
-
-MAX_MANUAL_LINES = 30
 
 
 def render_report(reports: list[Report], name: str, config: Config, language: str) -> tuple[str, str]:
@@ -150,16 +145,14 @@ def _report_lines(report: Report, config: Config, t: dict, lang: str) -> list[st
 
 
 def _movement_lines(report: Report, t: dict, lang: str) -> list[str]:
-    """Mouvements manuels de la semaine (30 lignes au plus) puis consommation automatique ; vide s'il n'y en a pas."""
+    """Mouvements manuels de la semaine puis consommation automatique ; vide s'il n'y en a pas."""
     lines = []
     if report.manual:
         lines.append(t["manual_header"])
-        for movement in report.manual[:MAX_MANUAL_LINES]:
+        for movement in report.manual:
             lines.append(t["manual_line"].format(
                 date=_date_time(movement.when, lang), minutes=f"{movement.weekly_change + movement.capital_change:+d}",
                 reason=movement.reason or t["no_reason"]))
-        if len(report.manual) > MAX_MANUAL_LINES:
-            lines.append(t["manual_more"].format(count=len(report.manual) - MAX_MANUAL_LINES))
     if report.automatic:
         lines.append(t["automatic_header"])
         lines.extend(t["automatic_line"].format(reason=reason, minutes=minutes)

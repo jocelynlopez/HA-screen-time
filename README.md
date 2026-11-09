@@ -27,7 +27,7 @@ school averages and grades, and debited automatically by the time actually spent
   The *overall average bonus* is the weekly credit (from the overall average) plus the part of the grades credit that
   this week's grades do not cover (all of it when there is no grade). The lines always add up to the available time. The
   report also lists the **manual movements of the past week** (date, signed minutes and reason of each adjustment or manual
-  consumption, up to 30 lines) and the time consumed automatically by each sensor, so the balance can be traced.
+  consumption) and the time consumed automatically by each sensor, so the balance can be traced.
 
 Without a grades source, the settlement applies the fallback credit (240 min by default). With the **EcoleDirecte
 source** (see below), it uses the real averages and grades. With **screen time sensors** (see below), consumption is
@@ -114,8 +114,10 @@ How it works:
   capital). Fractions of a minute are carried over to the next reading; several sensors add up.
 - On a sensor's **first reading** (when chosen in the options), nothing is billed: the usage already elapsed does not
   count.
-- The counter resets every night. A **change of day** (`date` attribute) or, failing that, a **decrease** of the
-  counter counts as a reset: the new reading is then the consumption since the reset.
+- The counter resets every night. A **change of day** (`date` attribute) counts as a reset: the new reading is then
+  the consumption since the reset, except an identical reading, which is the previous day's stale total (the date
+  changes before the minutes) and is not counted. A **decrease** on the same day is counted only once a second
+  lower reading confirms it, so a passing low reading is ignored. Without a `date`, a decrease is an immediate reset.
 - Reference readings are saved with the state: on restart, the difference that occurred during the shutdown is
   consumed, without losing or doubling any minute.
 - Automatic consumptions of the same sensor on the same day form **a single journal line**.
@@ -246,7 +248,7 @@ l'ordinateur.
   Le *complément moyenne générale* est le crédit hebdomadaire (issu de la moyenne générale) plus la part du crédit de
   notes que les notes de la semaine ne couvrent pas (tout, s'il n'y a aucune note). Les lignes s'additionnent toujours
   au temps disponible. Le rapport liste aussi les **mouvements manuels de la semaine écoulée** (date, minutes signées et raison de chaque
-  ajustement ou consommation manuelle, 30 lignes au plus) et le temps consommé automatiquement par chaque capteur, pour pouvoir retracer le solde.
+  ajustement ou consommation manuelle) et le temps consommé automatiquement par chaque capteur, pour pouvoir retracer le solde.
 
 Sans source de notes, le bilan applique le crédit de repli (240 min par défaut). Avec la **source EcoleDirecte**
 (voir plus bas), il utilise les vraies moyennes et les vraies notes. Avec les **capteurs de temps d'écran** (voir plus
@@ -333,8 +335,11 @@ Fonctionnement :
 - À chaque nouveau relevé, la **différence avec le relevé de référence** est consommée (crédit hebdomadaire d'abord,
   puis capital notes). Les fractions de minute sont reportées au relevé suivant ; plusieurs capteurs s'additionnent.
 - Au **premier relevé** d'un capteur (choix dans les options), rien n'est facturé : l'usage déjà écoulé ne compte pas.
-- Le compteur repart de zéro chaque nuit. Un **changement de jour** (attribut `date`) ou, à défaut, une **baisse** du
-  compteur vaut remise à zéro : le nouveau relevé est alors la consommation depuis la remise à zéro.
+- Le compteur repart de zéro chaque nuit. Un **changement de jour** (attribut `date`) vaut remise à zéro : le nouveau
+  relevé est alors la consommation depuis la remise à zéro, sauf un relevé identique, qui est le total périmé de la
+  veille (la date change avant les minutes) et n'est pas compté. Une **baisse** le même jour n'est comptée que si un
+  second relevé plus bas la confirme, donc un relevé bas passager est ignoré. Sans `date`, une baisse est une remise
+  à zéro immédiate.
 - Les relevés de référence sont enregistrés avec l'état : au redémarrage, la différence survenue pendant l'arrêt est
   consommée, sans perdre ni doubler de minute.
 - Les consommations automatiques d'un même capteur dans la même journée forment **une seule ligne du journal**.

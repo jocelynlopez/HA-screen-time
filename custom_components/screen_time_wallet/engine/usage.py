@@ -14,13 +14,17 @@ class Baseline:
 
     minutes: Fraction
     day: str | None = None
+    suspect: bool = False  # un relevé plus bas ou périmé a été vu : la prochaine baisse vaut remise à zéro
 
     def to_json(self) -> dict:
-        return {"minutes": f"{self.minutes.numerator}/{self.minutes.denominator}", "date": self.day}
+        data = {"minutes": f"{self.minutes.numerator}/{self.minutes.denominator}", "date": self.day}
+        if self.suspect:
+            data["suspect"] = True
+        return data
 
     @classmethod
     def from_json(cls, data: dict) -> "Baseline":
-        return cls(Fraction(data["minutes"]), normalize_day(data.get("date")))
+        return cls(Fraction(data["minutes"]), normalize_day(data.get("date")), data.get("suspect") is True)
 
 
 def normalize_day(raw) -> str | None:
@@ -47,8 +51,11 @@ def reading_minutes(state, total_seconds=None) -> Fraction | None:
 def consumed_since(baseline: Baseline | None, minutes, day=None) -> tuple[int, Baseline | None]:
     """Minutes entières consommées depuis la référence, et nouvelle référence.
 
-    Un jour différent de celui de la référence, ou à défaut de jour une valeur plus basse, vaut remise à zéro du
-    compteur. La référence n'avance que des minutes consommées : les fractions sont reportées au relevé suivant.
+    Un jour différent de celui de la référence vaut remise à zéro du compteur, sauf si le relevé est identique à la
+    référence : c'est alors le total périmé de la veille (la date change avant les minutes), rien n'est consommé et la
+    baisse suivante est acceptée. Une baisse le même jour n'est consommée qu'une fois confirmée par un second relevé
+    plus bas ; un relevé qui remonte annule le doute. Sans date, une baisse est une remise à zéro immédiate.
+    La référence n'avance que des minutes consommées : les fractions sont reportées au relevé suivant.
     Un relevé invalide est ignoré (rien consommé, référence inchangée).
     """
     reading = to_fraction(minutes)
@@ -57,7 +64,13 @@ def consumed_since(baseline: Baseline | None, minutes, day=None) -> tuple[int, B
     day = normalize_day(day)
     if baseline is None:
         return 0, Baseline(reading, day)
-    if (day and baseline.day and day != baseline.day) or reading < baseline.minutes:
+    if day and baseline.day and day != baseline.day:
+        if reading == baseline.minutes and reading > 0:
+            return 0, Baseline(baseline.minutes, day, True)
+        baseline = Baseline(Fraction(0), day)
+    elif reading < baseline.minutes:
+        if day and baseline.day and not baseline.suspect:
+            return 0, Baseline(baseline.minutes, baseline.day, True)
         baseline = Baseline(Fraction(0), day)
     consumed = floor(reading - baseline.minutes)
     return consumed, Baseline(baseline.minutes + consumed, day or baseline.day)

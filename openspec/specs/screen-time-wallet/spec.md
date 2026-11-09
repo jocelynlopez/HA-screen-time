@@ -262,7 +262,7 @@ Le système SHALL marquer comme automatique l'origine d'une consommation automat
 - **THEN** elle crée son propre mouvement
 
 ### Requirement: Mouvements de la semaine dans le compte rendu
-Le système SHALL ajouter au compte rendu du bilan de chaque lundi les ajustements et consommations manuels de la semaine écoulée, avec leur date, leur variation du temps disponible et leur motif, ainsi que le total consommé automatiquement par motif. La semaine va du lundi 00h00 précédent à ce lundi 00h00, d'après les dates du journal.
+Le système SHALL ajouter au compte rendu du bilan de chaque lundi tous les ajustements et consommations manuels de la semaine écoulée, sans limite du nombre de lignes, avec leur date, leur variation du temps disponible et leur motif, ainsi que le total consommé automatiquement par motif. La semaine va du lundi 00h00 précédent à ce lundi 00h00, d'après les dates du journal.
 
 #### Scenario: Mouvements manuels de la semaine
 - **GIVEN** un ajustement de +30 le mercredi (« aide aux devoirs ») et une consommation de 45 le jeudi (« jeu console »)
@@ -287,6 +287,11 @@ Le système SHALL ajouter au compte rendu du bilan de chaque lundi les ajustemen
 - **GIVEN** deux lundis dus et un ajustement fait pendant la première des deux semaines
 - **WHEN** les bilans sont faits ensemble
 - **THEN** l'ajustement apparaît seulement dans le compte rendu de la première semaine
+
+#### Scenario: Nombreux mouvements manuels
+- **GIVEN** 45 ajustements manuels pendant la semaine
+- **WHEN** le bilan est fait
+- **THEN** le compte rendu liste les 45 mouvements, sans ligne « autre(s) »
 
 ### Requirement: Prévision du prochain bilan
 Le portefeuille SHALL pouvoir calculer, sans modifier son état, le compte rendu du bilan comme si le prochain lundi 00h00 était arrivé, à partir de la source des moyennes et des notes. Ce compte rendu SHALL inclure les mouvements de la semaine en cours. Les bilans déjà dus SHALL être rattrapés dans le calcul.
