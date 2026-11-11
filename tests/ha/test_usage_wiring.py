@@ -124,13 +124,14 @@ async def test_releve_indisponible_ignore(hass, freezer, unusable):
 
 
 @pytest.mark.requirement("ha-integration/Consommation automatique")
-async def test_remise_a_zero_du_compteur(hass, freezer):
+async def test_baisse_le_meme_jour_ignoree(hass, freezer):
     set_usage(hass, PC, 190)
     entry, runtime = await start_with(hass, freezer, [PC])
-    await set_and_wait(hass, PC, 12)  # même jour : la baisse attend un second relevé
-    assert runtime.wallet.weekly_credit == 240
+    await set_and_wait(hass, PC, 12)  # même jour : la baisse est ignorée
     await set_and_wait(hass, PC, 14)
-    assert runtime.wallet.weekly_credit == 240 - 14
+    assert runtime.wallet.weekly_credit == 240 and runtime.baselines[PC].minutes == 190
+    await set_and_wait(hass, PC, 200)
+    assert runtime.wallet.weekly_credit == 240 - 10
 
 
 @pytest.mark.requirement("ha-integration/Consommation automatique")

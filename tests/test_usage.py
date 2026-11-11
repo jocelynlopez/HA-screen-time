@@ -79,11 +79,21 @@ def test_meme_jour():
 
 
 @pytest.mark.requirement("screen-time-usage/Remise à zéro du compteur")
-def test_baisse_le_meme_jour_confirmee_par_un_second_releve():
-    consumed, ref = consumed_since(base(190, D1), 12, D1)
-    assert (consumed, ref) == (0, Baseline(Fraction(190), D1, True))
-    consumed, ref = consumed_since(ref, 14, D1)
-    assert (consumed, ref) == (14, Baseline(Fraction(14), D1))
+def test_baisse_persistante_le_meme_jour_ignoree():
+    ref = base(190, D1)
+    for reading in (12, 14):
+        consumed, ref = consumed_since(ref, reading, D1)
+        assert (consumed, ref) == (0, base(190, D1))
+
+
+@pytest.mark.requirement("screen-time-usage/Remise à zéro du compteur")
+def test_non_regression_compteur_oscillant_11_11():
+    """Mercredi 11/11 : 23, 18, 18, 23, 18, 28… recomptait 18 puis 23 minutes (89 min au lieu de 38)."""
+    ref, total = base(23, D1), 0
+    for reading in (18, 18, 23, 18, 28):
+        consumed, ref = consumed_since(ref, reading, D1)
+        total += consumed
+    assert (total, ref) == (5, base(28, D1))
 
 
 @pytest.mark.requirement("screen-time-usage/Remise à zéro du compteur")

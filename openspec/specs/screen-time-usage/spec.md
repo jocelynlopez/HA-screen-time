@@ -36,7 +36,7 @@ Le système SHALL prendre le premier relevé d'un compteur comme référence, av
 - **THEN** 5 minutes sont consommées
 
 ### Requirement: Remise à zéro du compteur
-Le système SHALL traiter comme remise à zéro un relevé daté d'un autre jour que la référence : la référence repart de 0 et le relevé est consommé, sauf s'il est identique à la référence (relevé périmé : rien n'est consommé, la référence passe au nouveau jour). Un relevé du même jour inférieur à la référence SHALL être confirmé par un second relevé inférieur avant d'être consommé ; sans date, une baisse est une remise à zéro immédiate.
+Le système SHALL traiter comme remise à zéro un relevé daté d'un autre jour que la référence : la référence repart de 0 et le relevé est consommé, sauf s'il est identique à la référence (relevé périmé : rien n'est consommé, la référence passe au nouveau jour). Un relevé du même jour inférieur à la référence SHALL être ignoré, la référence gardant le maximum du jour (sauf juste après un relevé périmé, où la baisse est acceptée) ; sans date, une baisse est une remise à zéro immédiate.
 
 #### Scenario: Changement de jour sans baisse
 - **GIVEN** une référence de 190 minutes datée du 2026-11-04
@@ -78,10 +78,15 @@ Le système SHALL traiter comme remise à zéro un relevé daté d'un autre jour
 - **WHEN** un relevé de 36 minutes est suivi d'un relevé de 46 minutes, tous deux datés du 2026-11-07
 - **THEN** aucune minute n'est consommée et la référence reste 46
 
-#### Scenario: Baisse confirmée le même jour
+#### Scenario: Compteur oscillant le même jour
+- **GIVEN** une référence de 23 minutes datée du 2026-11-11
+- **WHEN** les relevés 18, 18, 23, 18, 28 sont lus ce même jour
+- **THEN** seules 5 minutes sont consommées (au relevé de 28) et la référence devient 28
+
+#### Scenario: Baisse persistante le même jour
 - **GIVEN** une référence de 190 minutes datée du 2026-11-07
-- **WHEN** deux relevés successifs de 12 puis 14 minutes sont lus ce même jour
-- **THEN** 14 minutes sont consommées au second relevé et la référence devient 14
+- **WHEN** des relevés de 12 puis 14 minutes sont lus ce même jour
+- **THEN** aucune minute n'est consommée et la référence reste 190
 
 ### Requirement: Relevé invalide ignoré
 Le système SHALL ignorer un relevé inconnu, indisponible, vide, non numérique ou négatif, sans rien consommer ni modifier la référence.

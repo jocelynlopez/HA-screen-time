@@ -116,8 +116,8 @@ How it works:
   count.
 - The counter resets every night. A **change of day** (`date` attribute) counts as a reset: the new reading is then
   the consumption since the reset, except an identical reading, which is the previous day's stale total (the date
-  changes before the minutes) and is not counted. A **decrease** on the same day is counted only once a second
-  lower reading confirms it, so a passing low reading is ignored. Without a `date`, a decrease is an immediate reset.
+  changes before the minutes) and is not counted. A **decrease** on the same day is ignored: the day's maximum is the
+  reference, so an oscillating counter is never recounted. Without a `date`, a decrease is an immediate reset.
 - Reference readings are saved with the state: on restart, the difference that occurred during the shutdown is
   consumed, without losing or doubling any minute.
 - Automatic consumptions of the same sensor on the same day form **a single journal line**.
@@ -337,8 +337,8 @@ Fonctionnement :
 - Au **premier relevé** d'un capteur (choix dans les options), rien n'est facturé : l'usage déjà écoulé ne compte pas.
 - Le compteur repart de zéro chaque nuit. Un **changement de jour** (attribut `date`) vaut remise à zéro : le nouveau
   relevé est alors la consommation depuis la remise à zéro, sauf un relevé identique, qui est le total périmé de la
-  veille (la date change avant les minutes) et n'est pas compté. Une **baisse** le même jour n'est comptée que si un
-  second relevé plus bas la confirme, donc un relevé bas passager est ignoré. Sans `date`, une baisse est une remise
+  veille (la date change avant les minutes) et n'est pas compté. Une **baisse** le même jour est ignorée : le
+  maximum de la journée fait référence, donc un compteur qui oscille n'est jamais recompté. Sans `date`, une baisse est une remise
   à zéro immédiate.
 - Les relevés de référence sont enregistrés avec l'état : au redémarrage, la différence survenue pendant l'arrêt est
   consommée, sans perdre ni doubler de minute.
