@@ -81,6 +81,36 @@ def test_credit_hebdomadaire_non_cumulable():
 
 
 @pytest.mark.requirement("screen-time-wallet/Bilan du lundi")
+def test_credit_non_consomme_rembourse_la_dette():
+    w = fresh()
+    w.notes_capital = -330
+    w.weekly_credit = 83
+    report = w.settle(NEXT_MONDAY, SEVEN, [])[0]
+    assert (report.absorbed, report.carried) == (83, -247)
+    assert w.notes_capital == -247 + report.week_credit
+    assert w.movements[-1].detail["absorbed"] == 83
+    assert w.movements[-1].capital_change == 83 + report.week_credit
+
+
+@pytest.mark.requirement("screen-time-wallet/Bilan du lundi")
+def test_credit_non_consomme_limite_a_la_dette():
+    w = fresh()
+    w.notes_capital = -40
+    w.weekly_credit = 100
+    report = w.settle(NEXT_MONDAY, SEVEN, [])[0]
+    assert (report.absorbed, report.carried) == (40, 0)
+
+
+@pytest.mark.requirement("screen-time-wallet/Bilan du lundi")
+def test_credit_non_consomme_perdu_sans_dette():
+    w = fresh()
+    w.notes_capital = 50
+    w.weekly_credit = 100
+    report = w.settle(NEXT_MONDAY, SEVEN, [])[0]
+    assert (report.absorbed, report.carried) == (0, 50)
+
+
+@pytest.mark.requirement("screen-time-wallet/Bilan du lundi")
 def test_capital_cumule():
     w = fresh(SIXTEEN)
     w.notes_capital = 111
@@ -119,7 +149,8 @@ def test_trois_lundis_manques():
     w = fresh()
     reports = w.settle(datetime(2026, 11, 23, 8, 0), SEVEN, AP_FR)
     assert [r.week_credit for r in reports] == [-374, 342, 342]
-    assert w.notes_capital == -374 + 2 * 342
+    assert [r.absorbed for r in reports] == [0, 228, 0]  # le crédit entier du 2e lundi rembourse la dette, puis plus rien
+    assert w.notes_capital == -374 + 228 + 2 * 342
     assert w.weekly_credit == 228  # celui d'une seule semaine
 
 

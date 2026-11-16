@@ -8,7 +8,8 @@ school averages and grades, and debited automatically by the time actually spent
 ## How it works
 
 - Every Monday at 00:00, a **settlement** adds:
-  - a **weekly credit** derived from the general average, reset to its value each week (it does not accumulate);
+  - a **weekly credit** derived from the general average, reset to its value each week (it does not accumulate, except that its unused part first pays back any debt of
+    the grades capital);
   - a **week credit** derived from the grades of the past week, added to the **grades capital**, which accumulates and
     can go negative.
 - The **available time** is the sum of both. Consumption debits the weekly credit first.
@@ -229,7 +230,8 @@ l'ordinateur.
 ## Fonctionnement
 
 - Chaque lundi à 00h00, un **bilan** verse :
-  - un **crédit hebdomadaire** issu de la moyenne générale, remis à sa valeur chaque semaine (non cumulable) ;
+  - un **crédit hebdomadaire** issu de la moyenne générale, remis à sa valeur chaque semaine (non cumulable, sauf que sa part non consommée rembourse d'abord la dette
+    du capital notes) ;
   - un **crédit de semaine** issu de la moyenne des notes de la semaine écoulée, ajouté au **capital notes**, qui se
     cumule et peut être négatif.
 - Le **temps disponible** est la somme des deux. La consommation débite d'abord le crédit hebdomadaire.

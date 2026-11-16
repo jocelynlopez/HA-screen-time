@@ -34,12 +34,27 @@ Le système SHALL tenir un crédit hebdomadaire (entier supérieur ou égal à 0
 - **THEN** le crédit hebdomadaire est de 240 minutes
 
 ### Requirement: Bilan du lundi
-Le système SHALL effectuer un bilan à chaque lundi 00h00 (heure locale) écoulé depuis le dernier bilan, à partir des moyennes par matière fournies par l'appelant : le crédit hebdomadaire est remplacé par le crédit initial, et le crédit de semaine des notes vues depuis le dernier bilan est ajouté au capital notes.
+Le système SHALL effectuer un bilan à chaque lundi 00h00 (heure locale) écoulé depuis le dernier bilan, à partir des moyennes par matière fournies par l'appelant : le crédit hebdomadaire non consommé rembourse d'abord la dette du capital notes, à hauteur de cette dette (un capital positif ou nul le laisse perdu), puis le crédit hebdomadaire est remplacé par le crédit initial, et le crédit de semaine des notes vues depuis le dernier bilan est ajouté au capital notes.
 
 #### Scenario: Crédit hebdomadaire non cumulable
 - **GIVEN** un crédit hebdomadaire de 228 minutes entièrement inutilisé
 - **WHEN** le lundi suivant arrive et que le crédit initial est de 228
 - **THEN** le crédit hebdomadaire est de 228 minutes, et non 456
+
+#### Scenario: Crédit non consommé qui rembourse la dette
+- **GIVEN** un capital notes de −330 minutes et un crédit hebdomadaire non consommé de 83 minutes
+- **WHEN** le bilan du lundi a lieu
+- **THEN** 83 minutes sont ajoutées au capital notes (−247) avant le crédit de semaine, et le compte rendu indique ce remboursement
+
+#### Scenario: Remboursement limité à la dette
+- **GIVEN** un capital notes de −40 minutes et un crédit hebdomadaire non consommé de 100 minutes
+- **WHEN** le bilan du lundi a lieu
+- **THEN** 40 minutes seulement sont ajoutées au capital notes, qui devient 0
+
+#### Scenario: Crédit perdu sans dette
+- **GIVEN** un capital notes de +50 minutes et un crédit hebdomadaire non consommé de 100 minutes
+- **WHEN** le bilan du lundi a lieu
+- **THEN** le capital notes reste à 50 minutes et le crédit non consommé est perdu
 
 #### Scenario: Capital cumulé
 - **GIVEN** un capital notes de +111 minutes
@@ -65,7 +80,7 @@ Quand plusieurs lundis se sont écoulés depuis le dernier bilan, le système SH
 #### Scenario: Trois lundis manqués
 - **GIVEN** trois lundis écoulés depuis le dernier bilan, une moyenne générale de 15,796 et des notes en attente
 - **WHEN** le bilan est demandé
-- **THEN** le premier bilan utilise les notes en attente, les deux suivants ajoutent chacun le crédit de semaine d'une semaine sans note (+342 minutes), et le crédit hebdomadaire est celui d'une seule semaine
+- **THEN** le premier bilan utilise les notes en attente, les deux suivants ajoutent chacun le crédit de semaine d'une semaine sans note (+342 minutes), le crédit de chaque lundi intermédiaire rembourse la dette restante, et le crédit hebdomadaire final est celui d'une seule semaine
 
 ### Requirement: Notes de la semaine
 Le système SHALL considérer comme notes de la semaine celles vues pour la première fois depuis le dernier bilan. Une note SHALL être identifiée par la date, la matière, le commentaire, le barème et le coefficient, à l'exclusion de sa valeur. Une note déjà vue SHALL être ignorée, même si sa valeur a changé.

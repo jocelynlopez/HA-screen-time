@@ -10,6 +10,7 @@ TEXTS = {
     "fr": {
         "report_title": "Bilan du portefeuille de {name}",
         "week_title": "Ton temps de la semaine (lundi {date}) :",
+        "absorbed": "• Temps non utilisé de la semaine passée, qui a remboursé ta dette : {minutes:+d} min",
         "carried": "• Capital notes reporté : {minutes} min",
         "note_minutes": "• {subject} {value}/20 : {minutes} min",
         "complement": "• Complément moyenne générale ({average}) : {minutes} min",
@@ -39,6 +40,7 @@ TEXTS = {
     "en": {
         "report_title": "{name}'s wallet report",
         "week_title": "Your time this week (Monday {date}):",
+        "absorbed": "• Last week's unused time, which paid back your debt: {minutes:+d} min",
         "carried": "• Grades capital carried over: {minutes} min",
         "note_minutes": "• {subject} {value}/20: {minutes} min",
         "complement": "• Overall average bonus ({average}): {minutes} min",
@@ -132,6 +134,8 @@ def _report_lines(report: Report, config: Config, t: dict, lang: str) -> list[st
         lines.append(t["week_credit_fallback"])
         lines.append(t["totals"].format(capital=f"{report.notes_capital:+d}", available=report.available))
     else:
+        if report.absorbed:
+            lines.append(t["absorbed"].format(minutes=report.absorbed))
         if report.carried:
             lines.append(t["carried"].format(minutes=f"{report.carried:+d}"))
         for grade, minutes in report.note_minutes:
