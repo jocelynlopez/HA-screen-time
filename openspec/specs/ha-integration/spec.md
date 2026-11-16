@@ -256,7 +256,7 @@ Le système SHALL, à l'issue de chaque bilan et si l'option est activée, publi
 #### Scenario: Temps reporté
 - **GIVEN** un capital notes de 145 minutes avant le bilan
 - **WHEN** le rapport est publié
-- **THEN** il indique « Reporté des semaines précédentes » avec +145 minutes ; avec un capital nul, cette ligne est absente
+- **THEN** il indique « Capital notes reporté » avec +145 minutes ; avec un capital nul, cette ligne est absente
 
 ### Requirement: Traductions
 Le système SHALL fournir en français et en anglais les textes des formulaires de configuration et d'options, des noms d'entités, des services et des messages d'erreur.

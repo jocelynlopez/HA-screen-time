@@ -209,8 +209,8 @@ async def test_temps_reporte_dans_le_rapport(hass, freezer, entry):
     with patch(CREATE) as create:
         await tick(hass, freezer, MONDAY_9)
     (_, message), = calls_by_kind(create)["report"]
-    assert "• Reporté des semaines précédentes : +145 min" in message
-    assert message.index("Reporté") < message.index("ARTS PLASTIQUES")
+    assert "• Capital notes reporté : +145 min" in message
+    assert message.index("Capital notes reporté") < message.index("ARTS PLASTIQUES")
 
 
 @pytest.mark.requirement("ha-integration/Rapport hebdomadaire")

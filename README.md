@@ -17,7 +17,7 @@ school averages and grades, and debited automatically by the time actually spent
 
   ```
   Your time this week (Monday 09/11/2026):
-  • Carried over from previous weeks: +145 min
+  • Grades capital carried over: +145 min
   • MATHEMATIQUES 15.2/20: +138 min
   • FRANCAIS 7/20: -415 min
   • Overall average bonus (15.80): +227 min
@@ -238,7 +238,7 @@ l'ordinateur.
 
   ```
   Ton temps de la semaine (lundi 09/11/2026) :
-  • Reporté des semaines précédentes : +145 min
+  • Capital notes reporté : +145 min
   • MATHEMATIQUES 15,2/20 : +138 min
   • FRANCAIS 7/20 : -415 min
   • Complément moyenne générale (15,80) : +227 min

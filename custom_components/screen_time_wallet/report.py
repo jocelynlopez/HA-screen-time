@@ -10,7 +10,7 @@ TEXTS = {
     "fr": {
         "report_title": "Bilan du portefeuille de {name}",
         "week_title": "Ton temps de la semaine (lundi {date}) :",
-        "carried": "• Reporté des semaines précédentes : {minutes} min",
+        "carried": "• Capital notes reporté : {minutes} min",
         "note_minutes": "• {subject} {value}/20 : {minutes} min",
         "complement": "• Complément moyenne générale ({average}) : {minutes} min",
         "available": "Temps disponible : {available} min",
@@ -39,7 +39,7 @@ TEXTS = {
     "en": {
         "report_title": "{name}'s wallet report",
         "week_title": "Your time this week (Monday {date}):",
-        "carried": "• Carried over from previous weeks: {minutes} min",
+        "carried": "• Grades capital carried over: {minutes} min",
         "note_minutes": "• {subject} {value}/20: {minutes} min",
         "complement": "• Overall average bonus ({average}): {minutes} min",
         "available": "Available time: {available} min",
